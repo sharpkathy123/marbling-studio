@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Master Marbling Studio - Splatter & Vortex Edition</title>
+    <title>Master Marbling Studio - Film Dynamics</title>
     <style>
         body { margin: 0; overflow: hidden; background: #0a0a0a; font-family: 'Georgia', serif; touch-action: none; }
         #ui { 
@@ -29,9 +29,8 @@
     </div>
     <div class="group">
         <span class="label">Instruments</span>
-        <button id="dropBtn" class="active">Ink (Single)</button>
-        <button id="splatBtn">Brush (Splatter)</button>
-        <button id="stylusBtn">Needle (Swirl)</button>
+        <button id="dropBtn" class="active">Ink (Drop)</button>
+        <button id="stylusBtn">Needle (Stretch)</button>
         <button id="rakeBtn">Comb (Rake)</button>
     </div>
     <button id="saveBtn" style="background: #4a6741; color: white; border: none; padding: 12px; border-radius: 4px; cursor: pointer;">Dip Paper (Export)</button>
@@ -51,61 +50,44 @@ const fragmentShader = `
     uniform vec2 uPrevMouse;
     uniform int uMode; 
     uniform vec3 uColor;
-    uniform float uTime;
     varying vec2 vUv;
-
-    float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }
 
     void main() {
         vec2 uv = vUv;
         vec3 paperColor = vec3(0.99, 0.98, 0.94);
 
-        if (uMode == 0 || uMode == 3) { // Droplet & Splatter
-            float radius = (uMode == 0) ? 0.05 : 0.015;
-            vec2 center = uMouse;
-            
-            if (uMode == 3) { // Splatter Offset math
-                float h = hash(uMouse * uTime);
-                center += vec2(h - 0.5, hash(uMouse.yx * uTime) - 0.5) * 0.2;
-                radius *= hash(vec2(uTime)) * 0.8;
-            }
-
-            float d = distance(uv, center);
+        if (uMode == 0) { // Nail Polish Expansion
+            float d = distance(uv, uMouse);
+            float radius = 0.05;
+            // Area-preserving displacement math
             if (d > 0.0001) {
                 float m = sqrt(1.0 + (radius * radius) / (d * d));
-                uv = center + (uv - center) / m;
+                uv = uMouse + (uv - uMouse) / m;
             }
             vec4 base = texture2D(tPrev, uv);
             if(base.a < 0.1) base = vec4(paperColor, 1.0);
             gl_FragColor = (d < radius) ? vec4(uColor, 1.0) : base;
 
-        } else if (uMode > 0) { // Needle & Comb
+        } else if (uMode > 0) { // Membrane Stretching (Needle/Comb)
             vec2 mouseDir = uMouse - uPrevMouse;
             vec2 advectedUv = uv;
-            float dist = distance(uv, uMouse);
             
-            if (uMode == 1) { // Vortex Needle
-                float needleRadius = 0.008;
-                // Gaussian falloff for smooth, curvy movement
-                float influence = exp(-(dist * dist) / (needleRadius * needleRadius));
-                
-                // Add a slight curl to the advection
-                float curl = 0.5 * influence;
-                vec2 rotatedDir = vec2(
-                    mouseDir.x * cos(curl) - mouseDir.y * sin(curl),
-                    mouseDir.x * sin(curl) + mouseDir.y * cos(curl)
-                );
-                
-                advectedUv -= rotatedDir * influence * 12.0;
+            if (uMode == 1) { // Micro-Needle (One-tenth size)
+                float dist = distance(uv, uMouse);
+                float radius = 0.008; 
+                // Using a sharp inverse-exponential pull to prevent "dotting"
+                float influence = exp(-dist / radius);
+                advectedUv -= mouseDir * influence * 1.2;
             } else { // Rake
                 vec2 perp = vec2(-(uMouse.y-uPrevMouse.y), uMouse.x-uPrevMouse.x);
                 for(float i = -4.0; i <= 4.0; i++) {
                     vec2 needlePos = uMouse + (normalize(perp + 0.00001) * i * 0.1);
                     float d = distance(uv, needlePos);
-                    float influence = exp(-(d * d) / (0.008 * 0.008));
-                    advectedUv -= mouseDir * influence * 6.0;
+                    float influence = exp(-d / 0.015);
+                    advectedUv -= mouseDir * influence * 0.8;
                 }
             }
+            
             vec4 sampled = texture2D(tPrev, advectedUv);
             if(sampled.a < 0.1) sampled = vec4(paperColor, 1.0);
             gl_FragColor = sampled;
@@ -118,7 +100,8 @@ const fragmentShader = `
 `;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-renderer.autoClear = false; renderer.setPixelRatio(1);
+renderer.autoClear = false; 
+renderer.setPixelRatio(1);
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
@@ -133,8 +116,7 @@ const material = new THREE.ShaderMaterial({
         uMouse: { value: new THREE.Vector2(-1,-1) },
         uPrevMouse: { value: new THREE.Vector2(-1,-1) },
         uMode: { value: -1 },
-        uColor: { value: new THREE.Color() },
-        uTime: { value: 0 }
+        uColor: { value: new THREE.Color() }
     },
     vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position, 1.0); }`,
     fragmentShader
@@ -154,9 +136,8 @@ function reset() {
 }
 reset();
 
-function animate(t) {
+function animate() {
     requestAnimationFrame(animate);
-    material.uniforms.uTime.value = t * 0.01;
     renderer.setRenderTarget(currentWrite);
     renderer.render(scene, camera);
     material.uniforms.tPrev.value = currentWrite.texture;
@@ -192,22 +173,21 @@ document.getElementById('colorPicker').oninput = (e) => {
 };
 
 document.getElementById('dropBtn').onclick = () => { activeMode = 0; setActive('dropBtn'); };
-document.getElementById('splatBtn').onclick = () => { activeMode = 3; setActive('splatBtn'); };
 document.getElementById('stylusBtn').onclick = () => { activeMode = 1; setActive('stylusBtn'); };
 document.getElementById('rakeBtn').onclick = () => { activeMode = 2; setActive('rakeBtn'); };
 document.getElementById('resetBtn').onclick = reset;
 document.getElementById('saveBtn').onclick = () => {
     const link = document.createElement('a');
-    link.download = 'marbling.png';
+    link.download = 'marbling_film.png';
     link.href = renderer.domElement.toDataURL();
     link.click();
 };
 
 function setActive(id) {
-    ['dropBtn', 'splatBtn', 'stylusBtn', 'rakeBtn'].forEach(b => document.getElementById(b).classList.toggle('active', b === id));
+    ['dropBtn', 'stylusBtn', 'rakeBtn'].forEach(b => document.getElementById(b).classList.toggle('active', b === id));
 }
 
-animate(0);
+animate();
 </script>
 </body>
 </html>
