@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Master Marbling Studio - Micro-Precision Only</title>
+    <title>Master Marbling Studio - Fluid Dynamics Edition</title>
     <style>
         body { margin: 0; overflow: hidden; background: #0a0a0a; font-family: 'Georgia', serif; touch-action: none; }
         #ui { 
@@ -29,7 +29,7 @@
     </div>
     <div class="group">
         <span class="label">Instruments</span>
-        <button id="dropBtn" class="active">Ink (Droplet)</button>
+        <button id="dropBtn" class="active">Ink (Fluid Drop)</button>
         <button id="stylusBtn">Needle (Micro-Swirl)</button>
         <button id="rakeBtn">Comb (Rake)</button>
     </div>
@@ -56,23 +56,32 @@ const fragmentShader = `
         vec2 uv = vUv;
         vec3 paperColor = vec3(0.99, 0.98, 0.94);
 
-        if (uMode == 0) { // Droplet
+        if (uMode == 0) { // Fluid Displacement Droplet
             float d = distance(uv, uMouse);
-            if (d < 0.08) {
-                float force = pow(1.0 - d / 0.08, 2.0) * 0.15;
-                uv -= normalize(uv - uMouse + 0.00001) * force;
+            float radius = 0.05;
+            
+            // Scientific Fluid Math:
+            // When we add a drop, we warp the entire surface outward
+            // New position = old position * sqrt(1 + (r^2 / dist^2))
+            // This preserves the area of the existing paint.
+            if (d > 0.001) {
+                float m = sqrt(1.0 + (radius * radius) / (d * d));
+                vec2 centerToUv = uv - uMouse;
+                uv = uMouse + centerToUv / m;
             }
+            
             vec4 base = texture2D(tPrev, uv);
             if(base.a < 0.1) base = vec4(paperColor, 1.0);
-            gl_FragColor = (d < 0.03) ? vec4(uColor, 1.0) : base;
+            
+            // Draw the new pigment in the center
+            gl_FragColor = (d < radius) ? vec4(uColor, 1.0) : base;
 
-        } else if (uMode > 0) { // Dragging
+        } else if (uMode > 0) { // Dragging Tools
             vec2 mouseDir = uMouse - uPrevMouse;
             vec2 advectedUv = uv;
             float dist = distance(uv, uMouse);
             
-            if (uMode == 1) { // HARDEST LOCK MICRO-PRECISION
-                // Radius is now hard-coded to ultra-small 0.005 with 8th power falloff
+            if (uMode == 1) { // Micro-Needle
                 float influence = pow(max(0.0, 1.0 - dist / 0.005), 8.0);
                 advectedUv -= mouseDir * influence * 3.5;
             } else { // Rake
@@ -183,7 +192,7 @@ document.getElementById('rakeBtn').onclick = () => { activeMode = 2; setActive('
 document.getElementById('resetBtn').onclick = reset;
 document.getElementById('saveBtn').onclick = () => {
     const link = document.createElement('a');
-    link.download = 'marbling_precision.png';
+    link.download = 'marbling_fluid.png';
     link.href = renderer.domElement.toDataURL();
     link.click();
 };
