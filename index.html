@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Master Marbling Studio - Fluid Precision</title>
+    <title>Master Marbling Studio - Splatter & Vortex Edition</title>
     <style>
         body { margin: 0; overflow: hidden; background: #0a0a0a; font-family: 'Georgia', serif; touch-action: none; }
         #ui { 
@@ -29,8 +29,9 @@
     </div>
     <div class="group">
         <span class="label">Instruments</span>
-        <button id="dropBtn" class="active">Ink (Fluid Drop)</button>
-        <button id="stylusBtn">Needle (Nano-Swirl)</button>
+        <button id="dropBtn" class="active">Ink (Single)</button>
+        <button id="splatBtn">Brush (Splatter)</button>
+        <button id="stylusBtn">Needle (Swirl)</button>
         <button id="rakeBtn">Comb (Rake)</button>
     </div>
     <button id="saveBtn" style="background: #4a6741; color: white; border: none; padding: 12px; border-radius: 4px; cursor: pointer;">Dip Paper (Export)</button>
@@ -50,41 +51,59 @@ const fragmentShader = `
     uniform vec2 uPrevMouse;
     uniform int uMode; 
     uniform vec3 uColor;
+    uniform float uTime;
     varying vec2 vUv;
+
+    float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }
 
     void main() {
         vec2 uv = vUv;
         vec3 paperColor = vec3(0.99, 0.98, 0.94);
 
-        if (uMode == 0) { // Fluid Displacement Droplet
-            float d = distance(uv, uMouse);
-            float radius = 0.05;
+        if (uMode == 0 || uMode == 3) { // Droplet & Splatter
+            float radius = (uMode == 0) ? 0.05 : 0.015;
+            vec2 center = uMouse;
+            
+            if (uMode == 3) { // Splatter Offset math
+                float h = hash(uMouse * uTime);
+                center += vec2(h - 0.5, hash(uMouse.yx * uTime) - 0.5) * 0.2;
+                radius *= hash(vec2(uTime)) * 0.8;
+            }
+
+            float d = distance(uv, center);
             if (d > 0.0001) {
-                // Area-preserving expansion
                 float m = sqrt(1.0 + (radius * radius) / (d * d));
-                uv = uMouse + (uv - uMouse) / m;
+                uv = center + (uv - center) / m;
             }
             vec4 base = texture2D(tPrev, uv);
             if(base.a < 0.1) base = vec4(paperColor, 1.0);
             gl_FragColor = (d < radius) ? vec4(uColor, 1.0) : base;
 
-        } else if (uMode > 0) { // Curvy Advection Tools
+        } else if (uMode > 0) { // Needle & Comb
             vec2 mouseDir = uMouse - uPrevMouse;
             vec2 advectedUv = uv;
+            float dist = distance(uv, uMouse);
             
-            if (uMode == 1) { // Nano-Needle
-                float dist = distance(uv, uMouse);
-                // Gaussian-style falloff for curvy, non-pointed trails
-                float needleRadius = 0.008; 
+            if (uMode == 1) { // Vortex Needle
+                float needleRadius = 0.008;
+                // Gaussian falloff for smooth, curvy movement
                 float influence = exp(-(dist * dist) / (needleRadius * needleRadius));
-                advectedUv -= mouseDir * influence * 15.0; 
+                
+                // Add a slight curl to the advection
+                float curl = 0.5 * influence;
+                vec2 rotatedDir = vec2(
+                    mouseDir.x * cos(curl) - mouseDir.y * sin(curl),
+                    mouseDir.x * sin(curl) + mouseDir.y * cos(curl)
+                );
+                
+                advectedUv -= rotatedDir * influence * 12.0;
             } else { // Rake
                 vec2 perp = vec2(-(uMouse.y-uPrevMouse.y), uMouse.x-uPrevMouse.x);
                 for(float i = -4.0; i <= 4.0; i++) {
                     vec2 needlePos = uMouse + (normalize(perp + 0.00001) * i * 0.1);
                     float d = distance(uv, needlePos);
-                    float influence = exp(-(d * d) / (0.01 * 0.01));
-                    advectedUv -= mouseDir * influence * 8.0;
+                    float influence = exp(-(d * d) / (0.008 * 0.008));
+                    advectedUv -= mouseDir * influence * 6.0;
                 }
             }
             vec4 sampled = texture2D(tPrev, advectedUv);
@@ -99,15 +118,11 @@ const fragmentShader = `
 `;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-renderer.autoClear = false; 
-renderer.setPixelRatio(1);
+renderer.autoClear = false; renderer.setPixelRatio(1);
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-const readBuffer = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, {
-    format: THREE.RGBAFormat,
-    type: THREE.UnsignedByteType
-});
+const readBuffer = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, { format: THREE.RGBAFormat });
 const writeBuffer = readBuffer.clone();
 
 const scene = new THREE.Scene();
@@ -118,7 +133,8 @@ const material = new THREE.ShaderMaterial({
         uMouse: { value: new THREE.Vector2(-1,-1) },
         uPrevMouse: { value: new THREE.Vector2(-1,-1) },
         uMode: { value: -1 },
-        uColor: { value: new THREE.Color() }
+        uColor: { value: new THREE.Color() },
+        uTime: { value: 0 }
     },
     vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position, 1.0); }`,
     fragmentShader
@@ -127,8 +143,7 @@ const material = new THREE.ShaderMaterial({
 scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
 
 let drawing = false;
-let currentRead = readBuffer;
-let currentWrite = writeBuffer;
+let currentRead = readBuffer, currentWrite = writeBuffer;
 let activeMode = 0;
 
 function reset() {
@@ -139,22 +154,19 @@ function reset() {
 }
 reset();
 
-function animate() {
+function animate(t) {
     requestAnimationFrame(animate);
+    material.uniforms.uTime.value = t * 0.01;
     renderer.setRenderTarget(currentWrite);
     renderer.render(scene, camera);
     material.uniforms.tPrev.value = currentWrite.texture;
-    let temp = currentRead;
-    currentRead = currentWrite;
-    currentWrite = temp;
+    [currentRead, currentWrite] = [currentWrite, currentRead];
     renderer.setRenderTarget(null);
     renderer.render(scene, camera);
     if (!drawing) material.uniforms.uMode.value = -1;
 }
 
-const getMousePos = (e) => {
-    return new THREE.Vector2(e.clientX/window.innerWidth, 1-(e.clientY/window.innerHeight));
-};
+const getMousePos = (e) => new THREE.Vector2(e.clientX/window.innerWidth, 1-(e.clientY/window.innerHeight));
 
 window.addEventListener('pointerdown', (e) => {
     if(e.target.closest('#ui')) return;
@@ -175,27 +187,27 @@ window.addEventListener('pointermove', (e) => {
 window.addEventListener('pointerup', () => drawing = false);
 
 document.getElementById('colorPicker').oninput = (e) => {
-    activeMode = 0;
-    setActive('dropBtn');
+    activeMode = 0; setActive('dropBtn');
     material.uniforms.uColor.value.set(e.target.value);
 };
 
 document.getElementById('dropBtn').onclick = () => { activeMode = 0; setActive('dropBtn'); };
+document.getElementById('splatBtn').onclick = () => { activeMode = 3; setActive('splatBtn'); };
 document.getElementById('stylusBtn').onclick = () => { activeMode = 1; setActive('stylusBtn'); };
 document.getElementById('rakeBtn').onclick = () => { activeMode = 2; setActive('rakeBtn'); };
 document.getElementById('resetBtn').onclick = reset;
 document.getElementById('saveBtn').onclick = () => {
     const link = document.createElement('a');
-    link.download = 'marbling_fluid_precision.png';
+    link.download = 'marbling.png';
     link.href = renderer.domElement.toDataURL();
     link.click();
 };
 
 function setActive(id) {
-    ['dropBtn', 'stylusBtn', 'rakeBtn'].forEach(b => document.getElementById(b).classList.toggle('active', b === id));
+    ['dropBtn', 'splatBtn', 'stylusBtn', 'rakeBtn'].forEach(b => document.getElementById(b).classList.toggle('active', b === id));
 }
 
-animate();
+animate(0);
 </script>
 </body>
 </html>
