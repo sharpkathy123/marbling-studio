@@ -2,10 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Master Marbling Studio - High Persistence</title>
+    <title>Master Marbling Studio - Absolute Stability</title>
     <style>
         body { margin: 0; overflow: hidden; background: #0a0a0a; font-family: 'Georgia', serif; touch-action: none; }
-        
         #ui { 
             position: absolute; top: 20px; left: 20px; z-index: 10; 
             background: linear-gradient(135deg, #3d2b1f 0%, #261a12 100%); 
@@ -15,68 +14,33 @@
             display: flex; flex-direction: column; gap: 12px;
             max-height: 85vh; overflow-y: auto;
         }
-
-        .guide-box { 
-            font-size: 13px; line-height: 1.5; color: #332211; 
-            background: #f4ece0; padding: 12px; border-radius: 4px; 
-            border: 1px solid #d4c5b0; font-style: italic;
-        }
-        .guide-box h4 { margin: 0 0 5px 0; color: #5c4033; font-size: 14px; text-transform: uppercase; border-bottom: 1px solid #d4c5b0; }
-
         .group { display: flex; flex-direction: column; gap: 6px; }
-        .label { font-size: 11px; font-weight: bold; color: #b39e7d; text-transform: uppercase; letter-spacing: 1px; }
-
-        button { 
-            cursor: pointer; padding: 10px; border: 1px solid #7a5c3e; 
-            border-radius: 4px; background: linear-gradient(to bottom, #a67c52, #7a5c3e); 
-            color: #fff; font-weight: 600; transition: 0.3s;
-        }
-        button.active { 
-            background: linear-gradient(to bottom, #ffd700, #b8860b); 
-            color: #3d2b1f; border-color: #ffed8a;
-        }
-
-        #saveBtn { background: #4a6741; border: 1px solid #2d3e27; margin-top: 10px; font-size: 15px; color: white; }
-        #resetBtn { background: transparent; border: 1px solid #5c4033; color: #b39e7d; font-size: 11px; }
-
-        input[type="color"] { width: 100%; height: 45px; border: 2px solid #5c4033; cursor: pointer; border-radius: 4px; background: #261a12; }
-        input[type="range"] { cursor: pointer; accent-color: #a67c52; }
-        #ui::-webkit-scrollbar { width: 8px; }
-        #ui::-webkit-scrollbar-thumb { background: #5c4033; border-radius: 4px; }
+        .label { font-size: 11px; font-weight: bold; color: #b39e7d; text-transform: uppercase; }
+        button { cursor: pointer; padding: 10px; border: 1px solid #7a5c3e; border-radius: 4px; background: #a67c52; color: #fff; font-weight: 600; }
+        button.active { background: #ffd700; color: #3d2b1f; }
+        input[type="range"] { accent-color: #ffd700; }
+        input[type="color"] { width: 100%; height: 45px; border-radius: 4px; border: 2px solid #5c4033; background: #261a12; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div id="ui">
-    <div class="guide-box">
-        <h4>📜 Quick Start</h4>
-        Select <b>Ink</b> and tap. If ink disappears, increase <b>Pigment Density</b>.
-    </div>
-
     <div class="group">
         <span class="label">Pigment Vessel</span>
         <input type="color" id="colorPicker" value="#8b0000">
     </div>
-
     <div class="group">
-        <span class="label">Pigment Density (Thickness)</span>
+        <span class="label">Pigment Density</span>
         <input type="range" id="densitySlider" min="0.1" max="0.8" step="0.05" value="0.4">
     </div>
-
     <div class="group">
         <span class="label">Instruments</span>
         <button id="dropBtn" class="active">Ink (Droplet)</button>
         <button id="stylusBtn">Needle (Stylus)</button>
         <button id="rakeBtn">Comb (Rake)</button>
     </div>
-
-    <div class="group">
-        <span class="label">Surface Vitality (Life)</span>
-        <input type="range" id="tensionSlider" min="0" max="0.005" step="0.0001" value="0.0005">
-    </div>
-
-    <button id="saveBtn">Dip Paper (Export)</button>
-    <button id="resetBtn">Wash Tray</button>
+    <button id="saveBtn" style="background: #4a6741; color: white; border: none; padding: 12px; border-radius: 4px; cursor: pointer;">Dip Paper (Export)</button>
+    <button id="resetBtn" style="background: transparent; border: 1px solid #5c4033; color: #b39e7d; padding: 5px; cursor: pointer; margin-top: 5px;">Wash Tray</button>
 </div>
 
 <script type="importmap">
@@ -93,63 +57,58 @@ const fragmentShader = `
     uniform int uMode; 
     uniform vec3 uColor;
     uniform float uRadius;
-    uniform float uTension;
     uniform float uDensity;
-    uniform float uTime;
     varying vec2 vUv;
 
-    float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }
-    
     void main() {
         vec2 uv = vUv;
-        
-        // Passive Drift
-        float shim = sin(uv.x * 30.0 + uTime) * cos(uv.y * 30.0 + uTime);
-        uv += (shim * uTension * 0.1);
+        vec3 paperColor = vec3(0.99, 0.98, 0.94); // Solid fixed paper color
 
-        vec4 color;
         if (uMode == 0) { // Droplet
             float d = distance(uv, uMouse);
             if (d < uRadius) {
-                float force = pow(1.0 - d / uRadius, 2.0) * (0.08 + uTension * 10.0);
+                float force = pow(1.0 - d / uRadius, 2.0) * 0.12;
                 uv -= normalize(uv - uMouse) * force;
             }
             vec4 base = texture2D(tPrev, uv);
-            // uDensity controls how much the new drop expands and stays visible
-            color = (d < uRadius * uDensity) ? vec4(uColor, 1.0) : base;
-        } else if (uMode > 0) { // Needle & Comb
+            // If background is empty (white/light), ensure it doesn't darken
+            if(base.rgb == vec3(0.0)) base.rgb = paperColor; 
+            
+            gl_FragColor = (d < uRadius * uDensity) ? vec4(uColor, 1.0) : base;
+        } else if (uMode > 0) { // Advection
             vec2 mouseDir = uMouse - uPrevMouse;
             vec2 advectedUv = uv;
             float dist = distance(uv, uMouse);
             
-            if (uMode == 1) { // Needle
-                advectedUv -= mouseDir * smoothstep(uRadius, 0.0, dist) * 2.5;
-            } else { // Comb
+            if (uMode == 1) advectedUv -= mouseDir * smoothstep(uRadius, 0.0, dist) * 2.5;
+            else {
                 vec2 perp = vec2(-(uMouse.y-uPrevMouse.y), uMouse.x-uPrevMouse.x);
                 for(float i = -4.0; i <= 4.0; i++) {
                     vec2 needle = uMouse + (normalize(perp) * i * uRadius * 1.5);
                     advectedUv -= mouseDir * smoothstep(uRadius * 0.7, 0.0, distance(uv, needle)) * 1.5;
                 }
             }
-            color = texture2D(tPrev, advectedUv);
+            vec4 sampled = texture2D(tPrev, advectedUv);
+            // Persistence check: If we sample an empty pixel, return paper color
+            if(sampled.a < 0.1) sampled = vec4(paperColor, 1.0);
+            gl_FragColor = sampled;
         } else {
-            color = texture2D(tPrev, uv);
+            vec4 current = texture2D(tPrev, uv);
+            if(current.a < 0.1) current = vec4(paperColor, 1.0);
+            gl_FragColor = current;
         }
-
-        // Texture overlay (only if not reset)
-        float grain = (hash(vUv * 500.0) - 0.5) * 0.03;
-        gl_FragColor = vec4(color.rgb + grain, 1.0);
     }
 `;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-renderer.autoClear = false; // PREVENTS COLOR LOSS
-renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setPixelRatio(1); // Lock pixel ratio to prevent drift
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-let readBuffer = new THREE.WebGLRenderTarget(window.innerWidth * window.devicePixelRatio, window.innerHeight * window.devicePixelRatio);
-let writeBuffer = new THREE.WebGLRenderTarget(window.innerWidth * window.devicePixelRatio, window.innerHeight * window.devicePixelRatio);
+let readBuffer = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, {
+    minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, type: THREE.UnsignedByteType
+});
+let writeBuffer = readBuffer.clone();
 
 const scene = new THREE.Scene();
 const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -161,9 +120,7 @@ const material = new THREE.ShaderMaterial({
         uMode: { value: -1 },
         uColor: { value: new THREE.Color() },
         uRadius: { value: 0.08 },
-        uTension: { value: 0.0005 },
-        uDensity: { value: 0.4 },
-        uTime: { value: 0 }
+        uDensity: { value: 0.4 }
     },
     vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position, 1.0); }`,
     fragmentShader
@@ -176,53 +133,38 @@ function reset() {
     renderer.setRenderTarget(readBuffer); renderer.clear();
     renderer.setRenderTarget(writeBuffer); renderer.clear();
     renderer.setRenderTarget(null);
-    renderer.clear();
 }
 reset();
 
-let mode = 0;
 let drawing = false;
-
-function animate(time) {
+function animate() {
     requestAnimationFrame(animate);
-    material.uniforms.uTime.value = time * 0.001;
-    material.uniforms.uTension.value = parseFloat(document.getElementById('tensionSlider').value);
     material.uniforms.uDensity.value = parseFloat(document.getElementById('densitySlider').value);
-
     renderer.setRenderTarget(writeBuffer);
     renderer.render(scene, camera);
-    
-    // Ping-pong
-    let temp = readBuffer;
-    readBuffer = writeBuffer;
-    writeBuffer = temp;
-    
+    [readBuffer, writeBuffer] = [writeBuffer, readBuffer];
     material.uniforms.tPrev.value = readBuffer.texture;
-    
     renderer.setRenderTarget(null);
     renderer.render(scene, camera);
-    
     if (!drawing) material.uniforms.uMode.value = -1;
 }
 
 window.addEventListener('pointerdown', (e) => {
     if(e.target.closest('#ui')) return;
     drawing = true;
-    material.uniforms.uMode.value = mode;
+    material.uniforms.uMode.value = (document.getElementById('dropBtn').classList.contains('active')) ? 0 : 
+                                    (document.getElementById('stylusBtn').classList.contains('active')) ? 1 : 2;
     material.uniforms.uColor.value.set(document.getElementById('colorPicker').value);
-    updateMouse(e);
 });
-window.addEventListener('pointermove', (e) => updateMouse(e));
-window.addEventListener('pointerup', () => drawing = false);
-
-function updateMouse(e) {
+window.addEventListener('pointermove', (e) => {
     material.uniforms.uPrevMouse.value.copy(material.uniforms.uMouse.value);
     material.uniforms.uMouse.value.set(e.clientX/window.innerWidth, 1-(e.clientY/window.innerHeight));
-}
+});
+window.addEventListener('pointerup', () => drawing = false);
 
-document.getElementById('dropBtn').onclick = () => { mode = 0; setActive('dropBtn'); };
-document.getElementById('stylusBtn').onclick = () => { mode = 1; setActive('stylusBtn'); };
-document.getElementById('rakeBtn').onclick = () => { mode = 2; setActive('rakeBtn'); };
+document.getElementById('dropBtn').onclick = () => setActive('dropBtn');
+document.getElementById('stylusBtn').onclick = () => setActive('stylusBtn');
+document.getElementById('rakeBtn').onclick = () => setActive('rakeBtn');
 document.getElementById('resetBtn').onclick = reset;
 document.getElementById('saveBtn').onclick = () => {
     const link = document.createElement('a');
@@ -235,7 +177,7 @@ function setActive(id) {
     ['dropBtn', 'stylusBtn', 'rakeBtn'].forEach(b => document.getElementById(b).classList.toggle('active', b === id));
 }
 
-animate(0);
+animate();
 </script>
 </body>
 </html>
