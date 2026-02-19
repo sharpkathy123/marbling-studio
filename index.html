@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Master Marbling Studio - Variable Precision</title>
+    <title>Master Marbling Studio - Synchronized Edition</title>
     <style>
         body { margin: 0; overflow: hidden; background: #0a0a0a; font-family: 'Georgia', serif; touch-action: none; }
         #ui { 
@@ -64,12 +64,15 @@ const fragmentShader = `
 
         if (uMode == 0) { // Droplet
             float d = distance(uv, uMouse);
+            // DISPLACEMENT: Ensure it only affects current drop area
             if (d < 0.08) {
                 float force = pow(1.0 - d / 0.08, 2.0) * 0.15;
-                uv -= normalize(uv - uMouse) * force;
+                uv -= normalize(uv - uMouse + 0.0001) * force;
             }
             vec4 base = texture2D(tPrev, uv);
             if(base.a < 0.1) base = vec4(paperColor, 1.0);
+            
+            // PIGMENT: Sharp circle boundary
             gl_FragColor = (d < 0.03) ? vec4(uColor, 1.0) : base;
 
         } else if (uMode > 0) { // Dragging Tools
@@ -77,12 +80,12 @@ const fragmentShader = `
             vec2 advectedUv = uv;
             float dist = distance(uv, uMouse);
             
-            if (uMode == 1) { // VARIABLE WIDTH NEEDLE
-                advectedUv -= mouseDir * smoothstep(uNeedleWidth, 0.0, dist) * (1.0 / uNeedleWidth * 0.1);
+            if (uMode == 1) { // Needle
+                advectedUv -= mouseDir * smoothstep(uNeedleWidth, 0.0, dist) * (1.0 / (uNeedleWidth + 0.01) * 0.12);
             } else { // Rake
                 vec2 perp = vec2(-(uMouse.y-uPrevMouse.y), uMouse.x-uPrevMouse.x);
                 for(float i = -4.0; i <= 4.0; i++) {
-                    vec2 needle = uMouse + (normalize(perp) * i * 0.1);
+                    vec2 needle = uMouse + (normalize(perp + 0.0001) * i * 0.1);
                     advectedUv -= mouseDir * smoothstep(0.05, 0.0, distance(uv, needle)) * 1.5;
                 }
             }
@@ -143,34 +146,53 @@ reset();
 function animate() {
     requestAnimationFrame(animate);
     material.uniforms.uNeedleWidth.value = parseFloat(document.getElementById('needleWidth').value);
+    
     renderer.setRenderTarget(currentWrite);
     renderer.render(scene, camera);
     material.uniforms.tPrev.value = currentWrite.texture;
+    
     let temp = currentRead;
     currentRead = currentWrite;
     currentWrite = temp;
+    
     renderer.setRenderTarget(null);
     renderer.render(scene, camera);
+    
+    // Safety: Reset mode if not actively pressing
     if (!drawing) material.uniforms.uMode.value = -1;
 }
 
+const updateMouse = (e) => {
+    material.uniforms.uPrevMouse.value.copy(material.uniforms.uMouse.value);
+    material.uniforms.uMouse.value.set(e.clientX/window.innerWidth, 1-(e.clientY/window.innerHeight));
+};
+
 window.addEventListener('pointerdown', (e) => {
     if(e.target.closest('#ui')) return;
+    
+    // FORCE UPDATE COORDINATES BEFORE RENDERING
+    updateMouse(e);
+    material.uniforms.uPrevMouse.value.copy(material.uniforms.uMouse.value); // Prevents initial jump
+    
     drawing = true;
     material.uniforms.uMode.value = mode;
     material.uniforms.uColor.value.set(document.getElementById('colorPicker').value);
 });
 
 window.addEventListener('pointermove', (e) => {
-    material.uniforms.uPrevMouse.value.copy(material.uniforms.uMouse.value);
-    material.uniforms.uMouse.value.set(e.clientX/window.innerWidth, 1-(e.clientY/window.innerHeight));
+    if (!drawing && mode !== -1) return;
+    updateMouse(e);
 });
 
-window.addEventListener('pointerup', () => drawing = false);
+window.addEventListener('pointerup', () => {
+    drawing = false;
+});
 
-document.getElementById('colorPicker').oninput = () => {
+// FIX: Ensure first drop works by re-priming the mode on color change
+document.getElementById('colorPicker').oninput = (e) => {
     mode = 0;
     setActive('dropBtn');
+    material.uniforms.uColor.value.set(e.target.value);
 };
 
 document.getElementById('dropBtn').onclick = () => { mode = 0; setActive('dropBtn'); };
