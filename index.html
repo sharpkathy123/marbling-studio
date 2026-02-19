@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Master Marbling Studio - Synchronized Edition</title>
+    <title>Master Marbling Studio - Absolute Precision</title>
     <style>
         body { margin: 0; overflow: hidden; background: #0a0a0a; font-family: 'Georgia', serif; touch-action: none; }
         #ui { 
@@ -64,35 +64,32 @@ const fragmentShader = `
 
         if (uMode == 0) { // Droplet
             float d = distance(uv, uMouse);
-            // DISPLACEMENT: Ensure it only affects current drop area
             if (d < 0.08) {
+                // Stabilized force calculation
                 float force = pow(1.0 - d / 0.08, 2.0) * 0.15;
-                uv -= normalize(uv - uMouse + 0.0001) * force;
+                uv -= normalize(uv - uMouse + 0.00001) * force;
             }
             vec4 base = texture2D(tPrev, uv);
             if(base.a < 0.1) base = vec4(paperColor, 1.0);
-            
-            // PIGMENT: Sharp circle boundary
             gl_FragColor = (d < 0.03) ? vec4(uColor, 1.0) : base;
 
-        } else if (uMode > 0) { // Dragging Tools
+        } else if (uMode > 0) { // Dragging
             vec2 mouseDir = uMouse - uPrevMouse;
             vec2 advectedUv = uv;
             float dist = distance(uv, uMouse);
             
-            if (uMode == 1) { // Needle
-                advectedUv -= mouseDir * smoothstep(uNeedleWidth, 0.0, dist) * (1.0 / (uNeedleWidth + 0.01) * 0.12);
-            } else { // Rake
+            if (uMode == 1) {
+                advectedUv -= mouseDir * smoothstep(uNeedleWidth, 0.0, dist) * (1.0 / (uNeedleWidth + 0.001) * 0.12);
+            } else {
                 vec2 perp = vec2(-(uMouse.y-uPrevMouse.y), uMouse.x-uPrevMouse.x);
                 for(float i = -4.0; i <= 4.0; i++) {
-                    vec2 needle = uMouse + (normalize(perp + 0.0001) * i * 0.1);
+                    vec2 needle = uMouse + (normalize(perp + 0.00001) * i * 0.1);
                     advectedUv -= mouseDir * smoothstep(0.05, 0.0, distance(uv, needle)) * 1.5;
                 }
             }
             vec4 sampled = texture2D(tPrev, advectedUv);
             if(sampled.a < 0.1) sampled = vec4(paperColor, 1.0);
             gl_FragColor = sampled;
-
         } else {
             vec4 current = texture2D(tPrev, uv);
             if(current.a < 0.1) current = vec4(paperColor, 1.0);
@@ -133,7 +130,7 @@ scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
 let drawing = false;
 let currentRead = readBuffer;
 let currentWrite = writeBuffer;
-let mode = 0;
+let activeMode = 0;
 
 function reset() {
     renderer.setClearColor(0xfdfaf0, 1);
@@ -158,46 +155,46 @@ function animate() {
     renderer.setRenderTarget(null);
     renderer.render(scene, camera);
     
-    // Safety: Reset mode if not actively pressing
     if (!drawing) material.uniforms.uMode.value = -1;
 }
 
-const updateMouse = (e) => {
-    material.uniforms.uPrevMouse.value.copy(material.uniforms.uMouse.value);
-    material.uniforms.uMouse.value.set(e.clientX/window.innerWidth, 1-(e.clientY/window.innerHeight));
+const getMousePos = (e) => {
+    return new THREE.Vector2(e.clientX/window.innerWidth, 1-(e.clientY/window.innerHeight));
 };
 
 window.addEventListener('pointerdown', (e) => {
     if(e.target.closest('#ui')) return;
     
-    // FORCE UPDATE COORDINATES BEFORE RENDERING
-    updateMouse(e);
-    material.uniforms.uPrevMouse.value.copy(material.uniforms.uMouse.value); // Prevents initial jump
+    // HARD RESET COORDINATES ON FIRST CONTACT
+    const pos = getMousePos(e);
+    material.uniforms.uMouse.value.copy(pos);
+    material.uniforms.uPrevMouse.value.copy(pos); // This prevents the "leap" from UI to Tray
     
     drawing = true;
-    material.uniforms.uMode.value = mode;
+    material.uniforms.uMode.value = activeMode;
     material.uniforms.uColor.value.set(document.getElementById('colorPicker').value);
 });
 
 window.addEventListener('pointermove', (e) => {
-    if (!drawing && mode !== -1) return;
-    updateMouse(e);
+    if (!drawing) return;
+    material.uniforms.uPrevMouse.value.copy(material.uniforms.uMouse.value);
+    material.uniforms.uMouse.value.copy(getMousePos(e));
 });
 
 window.addEventListener('pointerup', () => {
     drawing = false;
 });
 
-// FIX: Ensure first drop works by re-priming the mode on color change
+// AUTO-SELECT INK
 document.getElementById('colorPicker').oninput = (e) => {
-    mode = 0;
+    activeMode = 0;
     setActive('dropBtn');
     material.uniforms.uColor.value.set(e.target.value);
 };
 
-document.getElementById('dropBtn').onclick = () => { mode = 0; setActive('dropBtn'); };
-document.getElementById('stylusBtn').onclick = () => { mode = 1; setActive('stylusBtn'); };
-document.getElementById('rakeBtn').onclick = () => { mode = 2; setActive('rakeBtn'); };
+document.getElementById('dropBtn').onclick = () => { activeMode = 0; setActive('dropBtn'); };
+document.getElementById('stylusBtn').onclick = () => { activeMode = 1; setActive('stylusBtn'); };
+document.getElementById('rakeBtn').onclick = () => { activeMode = 2; setActive('rakeBtn'); };
 document.getElementById('resetBtn').onclick = reset;
 document.getElementById('saveBtn').onclick = () => {
     const link = document.createElement('a');
