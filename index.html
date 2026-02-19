@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Master Marbling Studio - Film Dynamics</title>
+    <title>Master Marbling Studio - Viscosity Edition</title>
     <style>
         body { margin: 0; overflow: hidden; background: #0a0a0a; font-family: 'Georgia', serif; touch-action: none; }
         #ui { 
@@ -12,12 +12,14 @@
             border-radius: 8px; border: 2px solid #5c4033;
             box-shadow: 0 15px 50px rgba(0,0,0,0.5);
             display: flex; flex-direction: column; gap: 12px;
+            max-height: 90vh; overflow-y: auto;
         }
         .group { display: flex; flex-direction: column; gap: 6px; }
         .label { font-size: 11px; font-weight: bold; color: #b39e7d; text-transform: uppercase; }
         button { cursor: pointer; padding: 10px; border: 1px solid #7a5c3e; border-radius: 4px; background: #a67c52; color: #fff; font-weight: 600; transition: 0.2s; }
         button.active { background: #ffd700; color: #3d2b1f; }
         input[type="color"] { width: 100%; height: 45px; border-radius: 4px; border: 2px solid #5c4033; background: #261a12; cursor: pointer; }
+        input[type="range"] { accent-color: #ffd700; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -26,6 +28,10 @@
     <div class="group">
         <span class="label">Pigment Vessel</span>
         <input type="color" id="colorPicker" value="#8b0000">
+    </div>
+    <div class="group">
+        <span class="label">Film Viscosity (Stretch)</span>
+        <input type="range" id="viscositySlider" min="0.2" max="2.5" step="0.1" value="1.2">
     </div>
     <div class="group">
         <span class="label">Instruments</span>
@@ -50,16 +56,16 @@ const fragmentShader = `
     uniform vec2 uPrevMouse;
     uniform int uMode; 
     uniform vec3 uColor;
+    uniform float uViscosity;
     varying vec2 vUv;
 
     void main() {
         vec2 uv = vUv;
         vec3 paperColor = vec3(0.99, 0.98, 0.94);
 
-        if (uMode == 0) { // Nail Polish Expansion
+        if (uMode == 0) { // Expansion math
             float d = distance(uv, uMouse);
             float radius = 0.05;
-            // Area-preserving displacement math
             if (d > 0.0001) {
                 float m = sqrt(1.0 + (radius * radius) / (d * d));
                 uv = uMouse + (uv - uMouse) / m;
@@ -68,23 +74,22 @@ const fragmentShader = `
             if(base.a < 0.1) base = vec4(paperColor, 1.0);
             gl_FragColor = (d < radius) ? vec4(uColor, 1.0) : base;
 
-        } else if (uMode > 0) { // Membrane Stretching (Needle/Comb)
+        } else if (uMode > 0) { // Stretching math
             vec2 mouseDir = uMouse - uPrevMouse;
             vec2 advectedUv = uv;
             
-            if (uMode == 1) { // Micro-Needle (One-tenth size)
+            if (uMode == 1) { // Needle with Viscosity
                 float dist = distance(uv, uMouse);
                 float radius = 0.008; 
-                // Using a sharp inverse-exponential pull to prevent "dotting"
                 float influence = exp(-dist / radius);
-                advectedUv -= mouseDir * influence * 1.2;
+                advectedUv -= mouseDir * influence * uViscosity;
             } else { // Rake
                 vec2 perp = vec2(-(uMouse.y-uPrevMouse.y), uMouse.x-uPrevMouse.x);
                 for(float i = -4.0; i <= 4.0; i++) {
                     vec2 needlePos = uMouse + (normalize(perp + 0.00001) * i * 0.1);
                     float d = distance(uv, needlePos);
                     float influence = exp(-d / 0.015);
-                    advectedUv -= mouseDir * influence * 0.8;
+                    advectedUv -= mouseDir * influence * (uViscosity * 0.7);
                 }
             }
             
@@ -100,8 +105,7 @@ const fragmentShader = `
 `;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-renderer.autoClear = false; 
-renderer.setPixelRatio(1);
+renderer.autoClear = false; renderer.setPixelRatio(1);
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
@@ -116,7 +120,8 @@ const material = new THREE.ShaderMaterial({
         uMouse: { value: new THREE.Vector2(-1,-1) },
         uPrevMouse: { value: new THREE.Vector2(-1,-1) },
         uMode: { value: -1 },
-        uColor: { value: new THREE.Color() }
+        uColor: { value: new THREE.Color() },
+        uViscosity: { value: 1.2 }
     },
     vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position, 1.0); }`,
     fragmentShader
@@ -138,6 +143,7 @@ reset();
 
 function animate() {
     requestAnimationFrame(animate);
+    material.uniforms.uViscosity.value = parseFloat(document.getElementById('viscositySlider').value);
     renderer.setRenderTarget(currentWrite);
     renderer.render(scene, camera);
     material.uniforms.tPrev.value = currentWrite.texture;
@@ -178,7 +184,7 @@ document.getElementById('rakeBtn').onclick = () => { activeMode = 2; setActive('
 document.getElementById('resetBtn').onclick = reset;
 document.getElementById('saveBtn').onclick = () => {
     const link = document.createElement('a');
-    link.download = 'marbling_film.png';
+    link.download = 'marbling_art.png';
     link.href = renderer.domElement.toDataURL();
     link.click();
 };
