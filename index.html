@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Master Marbling Studio - V3 Robust</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #111; font-family: 'Segoe UI', sans-serif; touch-action: none; }
+        #ui { 
+            position: absolute; top: 20px; left: 20px; z-index: 10; 
+            background: rgba(255,255,255,0.98); padding: 20px; width: 280px;
+            border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            display: flex; flex-direction: column; gap: 12px;
+        }
+        .guide-box { font-size: 12px; line-height: 1.5; color: #333; background: #f0f7ff; padding: 12px; border-radius: 8px; border: 1px solid #cce3ff; }
+        .group { display: flex; flex-direction: column; gap: 4px; }
+        .label { font-size: 10px; font-weight: 800; color: #888; text-transform: uppercase; }
+        button { cursor: pointer; padding: 10px; border: 1px solid #ddd; border-radius: 6px; background: white; font-weight: 600; }
+        button.active { background: #007bff; color: white; border-color: #0056b3; }
+        #saveBtn { background: #2a9d8f; color: white; border: none; margin-top: 10px; }
+        #resetBtn { background: #eee; border: none; font-size: 11px; margin-top: 5px; }
+    </style>
+</head>
+<body>
+
+<div id="ui">
+    <div class="guide-box">
+        <strong>Quick Start:</strong><br>
+        1. Click <b>Droplet</b>.<br>
+        2. Tap the screen to add paint.<br>
+        3. Switch to <b>Stylus</b> to swirl.
+    </div>
+    <div class="group">
+        <span class="label">Color</span>
+        <input type="color" id="colorPicker" value="#ff4500">
+    </div>
+    <div class="group">
+        <span class="label">Tool</span>
+        <button id="dropBtn" class="active">Droplet</button>
+        <button id="stylusBtn">Stylus</button>
+        <button id="rakeBtn">Rake</button>
+    </div>
+    <button id="saveBtn">Download Image</button>
+    <button id="resetBtn">Reset Tray</button>
+</div>
+
+<script type="importmap">
+    { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+const fragmentShader = `
+    uniform sampler2D tPrev;
+    uniform vec2 uMouse;
+    uniform vec2 uPrevMouse;
+    uniform int uMode; 
+    uniform vec3 uColor;
+    uniform float uRadius;
+    uniform float uTime;
+    varying vec2 vUv;
+
+    void main() {
+        vec2 uv = vUv;
+        
+        if (uMode == 0) { // Droplet
+            float d = distance(uv, uMouse);
+            if (d < uRadius) {
+                float force = pow(1.0 - d / uRadius, 2.0) * 0.08;
+                uv -= normalize(uv - uMouse) * force;
+            }
+            vec4 base = texture2D(tPrev, uv);
+            gl_FragColor = (d < uRadius * 0.3) ? vec4(uColor, 1.0) : base;
+        } else if (uMode == 1 || uMode == 2) { // Tools
+            vec2 mouseDir = uMouse - uPrevMouse;
+            vec2 advectedUv = uv;
+            if (uMode == 1) {
+                float d = distance(uv, uMouse);
+                advectedUv -= mouseDir * smoothstep(uRadius, 0.0, d) * 2.5;
+            } else {
+                vec2 perp = vec2(-(uMouse.y-uPrevMouse.y), uMouse.x-uPrevMouse.x);
+                for(float i = -4.0; i <= 4.0; i++) {
+                    vec2 needle = uMouse + (normalize(perp) * i * uRadius * 1.5);
+                    advectedUv -= mouseDir * smoothstep(uRadius * 0.6, 0.0, distance(uv, needle)) * 1.5;
+                }
+            }
+            gl_FragColor = texture2D(tPrev, advectedUv);
+        } else {
+            gl_FragColor = texture2D(tPrev, uv);
+        }
+    }
+`;
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+let readBuffer = new THREE.WebGLRenderTarget(window.innerWidth * window.devicePixelRatio, window.innerHeight * window.devicePixelRatio);
+let writeBuffer = new THREE.WebGLRenderTarget(window.innerWidth * window.devicePixelRatio, window.innerHeight * window.devicePixelRatio);
+
+const scene = new THREE.Scene();
+const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+const material = new THREE.ShaderMaterial({
+    uniforms: {
+        tPrev: { value: readBuffer.texture },
+        uMouse: { value: new THREE.Vector2(-1, -1) },
+        uPrevMouse: { value: new THREE.Vector2(-1, -1) },
+        uMode: { value: -1 },
+        uColor: { value: new THREE.Color(0xff4500) },
+        uRadius: { value: 0.08 },
+        uTime: { value: 0 }
+    },
+    vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position, 1.0); }`,
+    fragmentShader
+});
+
+scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
+
+// --- CRITICAL FIX: Initialization ---
+function clearToWhite() {
+    renderer.setClearColor(0xffffff, 1);
+    renderer.setRenderTarget(readBuffer);
+    renderer.clear();
+    renderer.setRenderTarget(writeBuffer);
+    renderer.clear();
+    renderer.setRenderTarget(null);
+}
+clearToWhite();
+
+let mode = 0;
+let isInteracting = false;
+
+function animate(time) {
+    requestAnimationFrame(animate);
+    material.uniforms.uTime.value = time * 0.001;
+    
+    renderer.setRenderTarget(writeBuffer);
+    renderer.render(scene, camera);
+    [readBuffer, writeBuffer] = [writeBuffer, readBuffer];
+    material.uniforms.tPrev.value = readBuffer.texture;
+    
+    renderer.setRenderTarget(null);
+    renderer.render(scene, camera);
+    
+    // Reset mode so we don't "infinite paint"
+    if (!isInteracting) material.uniforms.uMode.value = -1;
+}
+
+window.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('#ui')) return;
+    isInteracting = true;
+    material.uniforms.uMode.value = mode;
+    material.uniforms.uColor.value.set(document.getElementById('colorPicker').value);
+    updateMouse(e);
+});
+
+window.addEventListener('pointermove', (e) => {
+    if (!isInteracting && mode !== -1) return;
+    updateMouse(e);
+});
+
+window.addEventListener('pointerup', () => {
+    isInteracting = false;
+});
+
+function updateMouse(e) {
+    material.uniforms.uPrevMouse.value.copy(material.uniforms.uMouse.value);
+    material.uniforms.uMouse.value.set(e.clientX / window.innerWidth, 1 - (e.clientY / window.innerHeight));
+}
+
+document.getElementById('dropBtn').onclick = () => { mode = 0; setActive('dropBtn'); };
+document.getElementById('stylusBtn').onclick = () => { mode = 1; setActive('stylusBtn'); };
+document.getElementById('rakeBtn').onclick = () => { mode = 2; setActive('rakeBtn'); };
+document.getElementById('resetBtn').onclick = clearToWhite;
+document.getElementById('saveBtn').onclick = () => {
+    const link = document.createElement('a');
+    link.download = 'marbling.png';
+    link.href = renderer.domElement.toDataURL();
+    link.click();
+};
+
+function setActive(id) {
+    ['dropBtn', 'stylusBtn', 'rakeBtn'].forEach(b => document.getElementById(b).classList.toggle('active', b === id));
+}
+
+animate(0);
+</script>
+</body>
+</html>
