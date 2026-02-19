@@ -2,45 +2,85 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Master Marbling Studio - V3 Robust</title>
+    <title>Master Marbling Studio - Pro Edition</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #111; font-family: 'Segoe UI', sans-serif; touch-action: none; }
+        body { margin: 0; overflow: hidden; background: #0a0a0a; font-family: 'Georgia', serif; touch-action: none; }
+        
         #ui { 
             position: absolute; top: 20px; left: 20px; z-index: 10; 
-            background: rgba(255,255,255,0.98); padding: 20px; width: 280px;
-            border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            background: linear-gradient(135deg, #3d2b1f 0%, #261a12 100%); 
+            color: #e2d1b3; padding: 20px; width: 280px;
+            border-radius: 8px; border: 2px solid #5c4033;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.8);
             display: flex; flex-direction: column; gap: 12px;
+            max-height: 85vh; overflow-y: auto;
         }
-        .guide-box { font-size: 12px; line-height: 1.5; color: #333; background: #f0f7ff; padding: 12px; border-radius: 8px; border: 1px solid #cce3ff; }
-        .group { display: flex; flex-direction: column; gap: 4px; }
-        .label { font-size: 10px; font-weight: 800; color: #888; text-transform: uppercase; }
-        button { cursor: pointer; padding: 10px; border: 1px solid #ddd; border-radius: 6px; background: white; font-weight: 600; }
-        button.active { background: #007bff; color: white; border-color: #0056b3; }
-        #saveBtn { background: #2a9d8f; color: white; border: none; margin-top: 10px; }
-        #resetBtn { background: #eee; border: none; font-size: 11px; margin-top: 5px; }
+
+        .guide-box { 
+            font-size: 13px; line-height: 1.5; color: #332211; 
+            background: #f4ece0; padding: 12px; border-radius: 4px; 
+            border: 1px solid #d4c5b0; font-style: italic;
+        }
+        .guide-box h4 { margin: 0 0 5px 0; color: #5c4033; font-size: 14px; text-transform: uppercase; border-bottom: 1px solid #d4c5b0; }
+
+        .group { display: flex; flex-direction: column; gap: 6px; }
+        .label { font-size: 11px; font-weight: bold; color: #b39e7d; text-transform: uppercase; letter-spacing: 1px; }
+
+        button { 
+            cursor: pointer; padding: 10px; border: 1px solid #7a5c3e; 
+            border-radius: 4px; background: linear-gradient(to bottom, #a67c52, #7a5c3e); 
+            color: #fff; font-weight: 600; transition: 0.3s; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        button:hover { filter: brightness(1.2); }
+        button.active { 
+            background: linear-gradient(to bottom, #ffd700, #b8860b); 
+            color: #3d2b1f; border-color: #ffed8a; box-shadow: 0 0 10px rgba(255,215,0,0.4);
+        }
+
+        #saveBtn { background: #4a6741; border: 1px solid #2d3e27; margin-top: 10px; font-size: 15px; }
+        #resetBtn { background: transparent; border: 1px solid #5c4033; color: #b39e7d; font-size: 11px; }
+
+        input[type="color"] { width: 100%; height: 45px; border: 2px solid #5c4033; cursor: pointer; border-radius: 4px; background: #261a12; }
+        #ui::-webkit-scrollbar { width: 8px; }
+        #ui::-webkit-scrollbar-thumb { background: #5c4033; border-radius: 4px; }
     </style>
 </head>
 <body>
 
 <div id="ui">
     <div class="guide-box">
-        <strong>Quick Start:</strong><br>
-        1. Click <b>Droplet</b>.<br>
-        2. Tap the screen to add paint.<br>
-        3. Switch to <b>Stylus</b> to swirl.
+        <h4>📜 Quick Start</h4>
+        1. Select <b>Ink</b>.<br>
+        2. Tap the tray to release round droplets.<br>
+        3. Drop inside circles to create rings.
     </div>
+
     <div class="group">
-        <span class="label">Color</span>
-        <input type="color" id="colorPicker" value="#ff4500">
+        <span class="label">Pigment Vessel</span>
+        <input type="color" id="colorPicker" value="#8b0000">
     </div>
+
     <div class="group">
-        <span class="label">Tool</span>
-        <button id="dropBtn" class="active">Droplet</button>
-        <button id="stylusBtn">Stylus</button>
-        <button id="rakeBtn">Rake</button>
+        <span class="label">Instruments</span>
+        <button id="dropBtn" class="active">Ink (Droplet)</button>
+        <button id="stylusBtn">Needle (Stylus)</button>
+        <button id="rakeBtn">Comb (Rake)</button>
     </div>
-    <button id="saveBtn">Download Image</button>
-    <button id="resetBtn">Reset Tray</button>
+
+    <div class="group">
+        <span class="label">Surface Vitality (Tension)</span>
+        <input type="range" id="tensionSlider" min="0" max="0.005" step="0.0001" value="0.001">
+    </div>
+
+    <div class="guide-box" style="background: #e9e4d9;">
+        <h4>🎨 Master Patterns</h4>
+        <b>Battal:</b> Stone pattern. Random drops.<br><br>
+        <b>Gel-Git:</b> Zig-zags with the Needle.<br><br>
+        <b>Nonpareil:</b> Comb across a Gel-Git base.
+    </div>
+
+    <button id="saveBtn">Dip Paper (Export)</button>
+    <button id="resetBtn">Wash Tray</button>
 </div>
 
 <script type="importmap">
@@ -57,37 +97,51 @@ const fragmentShader = `
     uniform int uMode; 
     uniform vec3 uColor;
     uniform float uRadius;
+    uniform float uTension;
     uniform float uTime;
     varying vec2 vUv;
 
+    // Simple noise for paper fiber effect
+    float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }
+    
     void main() {
         vec2 uv = vUv;
         
+        // Liquid Shimmer
+        float shim = sin(uv.x * 50.0 + uTime) * cos(uv.y * 50.0 + uTime);
+        uv += (shim * uTension * 0.25);
+
+        vec4 color;
         if (uMode == 0) { // Droplet
             float d = distance(uv, uMouse);
             if (d < uRadius) {
-                float force = pow(1.0 - d / uRadius, 2.0) * 0.08;
+                float force = pow(1.0 - d / uRadius, 2.0) * (0.07 + uTension * 10.0);
                 uv -= normalize(uv - uMouse) * force;
             }
             vec4 base = texture2D(tPrev, uv);
-            gl_FragColor = (d < uRadius * 0.3) ? vec4(uColor, 1.0) : base;
-        } else if (uMode == 1 || uMode == 2) { // Tools
+            color = (d < uRadius * 0.3) ? vec4(uColor, 1.0) : base;
+        } else if (uMode > 0) { // Needle & Comb
             vec2 mouseDir = uMouse - uPrevMouse;
             vec2 advectedUv = uv;
             if (uMode == 1) {
                 float d = distance(uv, uMouse);
-                advectedUv -= mouseDir * smoothstep(uRadius, 0.0, d) * 2.5;
+                advectedUv -= mouseDir * smoothstep(uRadius, 0.0, d) * 3.0;
             } else {
                 vec2 perp = vec2(-(uMouse.y-uPrevMouse.y), uMouse.x-uPrevMouse.x);
                 for(float i = -4.0; i <= 4.0; i++) {
-                    vec2 needle = uMouse + (normalize(perp) * i * uRadius * 1.5);
-                    advectedUv -= mouseDir * smoothstep(uRadius * 0.6, 0.0, distance(uv, needle)) * 1.5;
+                    vec2 needle = uMouse + (normalize(perp) * i * uRadius * 2.0);
+                    advectedUv -= mouseDir * smoothstep(uRadius * 0.7, 0.0, distance(uv, needle)) * 1.8;
                 }
             }
-            gl_FragColor = texture2D(tPrev, advectedUv);
+            color = texture2D(tPrev, advectedUv);
         } else {
-            gl_FragColor = texture2D(tPrev, uv);
+            color = texture2D(tPrev, uv);
         }
+
+        // Apply Paper Grain Overlay
+        float grain = (hash(vUv * 500.0) - 0.5) * 0.05;
+        float fiber = (hash(vec2(vUv.x * 10.0, vUv.y * 1000.0)) - 0.5) * 0.02;
+        gl_FragColor = vec4(color.rgb + grain + fiber, 1.0);
     }
 `;
 
@@ -104,11 +158,12 @@ const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 const material = new THREE.ShaderMaterial({
     uniforms: {
         tPrev: { value: readBuffer.texture },
-        uMouse: { value: new THREE.Vector2(-1, -1) },
-        uPrevMouse: { value: new THREE.Vector2(-1, -1) },
+        uMouse: { value: new THREE.Vector2(-1,-1) },
+        uPrevMouse: { value: new THREE.Vector2(-1,-1) },
         uMode: { value: -1 },
-        uColor: { value: new THREE.Color(0xff4500) },
+        uColor: { value: new THREE.Color() },
         uRadius: { value: 0.08 },
+        uTension: { value: 0.001 },
         uTime: { value: 0 }
     },
     vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position, 1.0); }`,
@@ -117,65 +172,52 @@ const material = new THREE.ShaderMaterial({
 
 scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
 
-// --- CRITICAL FIX: Initialization ---
-function clearToWhite() {
-    renderer.setClearColor(0xffffff, 1);
-    renderer.setRenderTarget(readBuffer);
-    renderer.clear();
-    renderer.setRenderTarget(writeBuffer);
-    renderer.clear();
+function reset() {
+    renderer.setClearColor(0xfdfaf0, 1); // Creamy paper color
+    renderer.setRenderTarget(readBuffer); renderer.clear();
+    renderer.setRenderTarget(writeBuffer); renderer.clear();
     renderer.setRenderTarget(null);
 }
-clearToWhite();
+reset();
 
 let mode = 0;
-let isInteracting = false;
+let drawing = false;
 
 function animate(time) {
     requestAnimationFrame(animate);
     material.uniforms.uTime.value = time * 0.001;
-    
+    material.uniforms.uTension.value = parseFloat(document.getElementById('tensionSlider').value);
     renderer.setRenderTarget(writeBuffer);
     renderer.render(scene, camera);
     [readBuffer, writeBuffer] = [writeBuffer, readBuffer];
     material.uniforms.tPrev.value = readBuffer.texture;
-    
     renderer.setRenderTarget(null);
     renderer.render(scene, camera);
-    
-    // Reset mode so we don't "infinite paint"
-    if (!isInteracting) material.uniforms.uMode.value = -1;
+    if (!drawing) material.uniforms.uMode.value = -1;
 }
 
 window.addEventListener('pointerdown', (e) => {
-    if (e.target.closest('#ui')) return;
-    isInteracting = true;
+    if(e.target.closest('#ui')) return;
+    drawing = true;
     material.uniforms.uMode.value = mode;
     material.uniforms.uColor.value.set(document.getElementById('colorPicker').value);
     updateMouse(e);
 });
-
-window.addEventListener('pointermove', (e) => {
-    if (!isInteracting && mode !== -1) return;
-    updateMouse(e);
-});
-
-window.addEventListener('pointerup', () => {
-    isInteracting = false;
-});
+window.addEventListener('pointermove', (e) => updateMouse(e));
+window.addEventListener('pointerup', () => drawing = false);
 
 function updateMouse(e) {
     material.uniforms.uPrevMouse.value.copy(material.uniforms.uMouse.value);
-    material.uniforms.uMouse.value.set(e.clientX / window.innerWidth, 1 - (e.clientY / window.innerHeight));
+    material.uniforms.uMouse.value.set(e.clientX/window.innerWidth, 1-(e.clientY/window.innerHeight));
 }
 
 document.getElementById('dropBtn').onclick = () => { mode = 0; setActive('dropBtn'); };
 document.getElementById('stylusBtn').onclick = () => { mode = 1; setActive('stylusBtn'); };
 document.getElementById('rakeBtn').onclick = () => { mode = 2; setActive('rakeBtn'); };
-document.getElementById('resetBtn').onclick = clearToWhite;
+document.getElementById('resetBtn').onclick = reset;
 document.getElementById('saveBtn').onclick = () => {
     const link = document.createElement('a');
-    link.download = 'marbling.png';
+    link.download = 'marble_art.png';
     link.href = renderer.domElement.toDataURL();
     link.click();
 };
