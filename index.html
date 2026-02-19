@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Master Marbling Studio - Pro Edition</title>
+    <title>Master Marbling Studio - High Persistence</title>
     <style>
         body { margin: 0; overflow: hidden; background: #0a0a0a; font-family: 'Georgia', serif; touch-action: none; }
         
@@ -29,18 +29,18 @@
         button { 
             cursor: pointer; padding: 10px; border: 1px solid #7a5c3e; 
             border-radius: 4px; background: linear-gradient(to bottom, #a67c52, #7a5c3e); 
-            color: #fff; font-weight: 600; transition: 0.3s; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            color: #fff; font-weight: 600; transition: 0.3s;
         }
-        button:hover { filter: brightness(1.2); }
         button.active { 
             background: linear-gradient(to bottom, #ffd700, #b8860b); 
-            color: #3d2b1f; border-color: #ffed8a; box-shadow: 0 0 10px rgba(255,215,0,0.4);
+            color: #3d2b1f; border-color: #ffed8a;
         }
 
-        #saveBtn { background: #4a6741; border: 1px solid #2d3e27; margin-top: 10px; font-size: 15px; }
+        #saveBtn { background: #4a6741; border: 1px solid #2d3e27; margin-top: 10px; font-size: 15px; color: white; }
         #resetBtn { background: transparent; border: 1px solid #5c4033; color: #b39e7d; font-size: 11px; }
 
         input[type="color"] { width: 100%; height: 45px; border: 2px solid #5c4033; cursor: pointer; border-radius: 4px; background: #261a12; }
+        input[type="range"] { cursor: pointer; accent-color: #a67c52; }
         #ui::-webkit-scrollbar { width: 8px; }
         #ui::-webkit-scrollbar-thumb { background: #5c4033; border-radius: 4px; }
     </style>
@@ -50,14 +50,17 @@
 <div id="ui">
     <div class="guide-box">
         <h4>📜 Quick Start</h4>
-        1. Select <b>Ink</b>.<br>
-        2. Tap the tray to release round droplets.<br>
-        3. Drop inside circles to create rings.
+        Select <b>Ink</b> and tap. If ink disappears, increase <b>Pigment Density</b>.
     </div>
 
     <div class="group">
         <span class="label">Pigment Vessel</span>
         <input type="color" id="colorPicker" value="#8b0000">
+    </div>
+
+    <div class="group">
+        <span class="label">Pigment Density (Thickness)</span>
+        <input type="range" id="densitySlider" min="0.1" max="0.8" step="0.05" value="0.4">
     </div>
 
     <div class="group">
@@ -68,15 +71,8 @@
     </div>
 
     <div class="group">
-        <span class="label">Surface Vitality (Tension)</span>
-        <input type="range" id="tensionSlider" min="0" max="0.005" step="0.0001" value="0.001">
-    </div>
-
-    <div class="guide-box" style="background: #e9e4d9;">
-        <h4>🎨 Master Patterns</h4>
-        <b>Battal:</b> Stone pattern. Random drops.<br><br>
-        <b>Gel-Git:</b> Zig-zags with the Needle.<br><br>
-        <b>Nonpareil:</b> Comb across a Gel-Git base.
+        <span class="label">Surface Vitality (Life)</span>
+        <input type="range" id="tensionSlider" min="0" max="0.005" step="0.0001" value="0.0005">
     </div>
 
     <button id="saveBtn">Dip Paper (Export)</button>
@@ -98,39 +94,41 @@ const fragmentShader = `
     uniform vec3 uColor;
     uniform float uRadius;
     uniform float uTension;
+    uniform float uDensity;
     uniform float uTime;
     varying vec2 vUv;
 
-    // Simple noise for paper fiber effect
     float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }
     
     void main() {
         vec2 uv = vUv;
         
-        // Liquid Shimmer
-        float shim = sin(uv.x * 50.0 + uTime) * cos(uv.y * 50.0 + uTime);
-        uv += (shim * uTension * 0.25);
+        // Passive Drift
+        float shim = sin(uv.x * 30.0 + uTime) * cos(uv.y * 30.0 + uTime);
+        uv += (shim * uTension * 0.1);
 
         vec4 color;
         if (uMode == 0) { // Droplet
             float d = distance(uv, uMouse);
             if (d < uRadius) {
-                float force = pow(1.0 - d / uRadius, 2.0) * (0.07 + uTension * 10.0);
+                float force = pow(1.0 - d / uRadius, 2.0) * (0.08 + uTension * 10.0);
                 uv -= normalize(uv - uMouse) * force;
             }
             vec4 base = texture2D(tPrev, uv);
-            color = (d < uRadius * 0.3) ? vec4(uColor, 1.0) : base;
+            // uDensity controls how much the new drop expands and stays visible
+            color = (d < uRadius * uDensity) ? vec4(uColor, 1.0) : base;
         } else if (uMode > 0) { // Needle & Comb
             vec2 mouseDir = uMouse - uPrevMouse;
             vec2 advectedUv = uv;
-            if (uMode == 1) {
-                float d = distance(uv, uMouse);
-                advectedUv -= mouseDir * smoothstep(uRadius, 0.0, d) * 3.0;
-            } else {
+            float dist = distance(uv, uMouse);
+            
+            if (uMode == 1) { // Needle
+                advectedUv -= mouseDir * smoothstep(uRadius, 0.0, dist) * 2.5;
+            } else { // Comb
                 vec2 perp = vec2(-(uMouse.y-uPrevMouse.y), uMouse.x-uPrevMouse.x);
                 for(float i = -4.0; i <= 4.0; i++) {
-                    vec2 needle = uMouse + (normalize(perp) * i * uRadius * 2.0);
-                    advectedUv -= mouseDir * smoothstep(uRadius * 0.7, 0.0, distance(uv, needle)) * 1.8;
+                    vec2 needle = uMouse + (normalize(perp) * i * uRadius * 1.5);
+                    advectedUv -= mouseDir * smoothstep(uRadius * 0.7, 0.0, distance(uv, needle)) * 1.5;
                 }
             }
             color = texture2D(tPrev, advectedUv);
@@ -138,14 +136,14 @@ const fragmentShader = `
             color = texture2D(tPrev, uv);
         }
 
-        // Apply Paper Grain Overlay
-        float grain = (hash(vUv * 500.0) - 0.5) * 0.05;
-        float fiber = (hash(vec2(vUv.x * 10.0, vUv.y * 1000.0)) - 0.5) * 0.02;
-        gl_FragColor = vec4(color.rgb + grain + fiber, 1.0);
+        // Texture overlay (only if not reset)
+        float grain = (hash(vUv * 500.0) - 0.5) * 0.03;
+        gl_FragColor = vec4(color.rgb + grain, 1.0);
     }
 `;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.autoClear = false; // PREVENTS COLOR LOSS
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
@@ -163,7 +161,8 @@ const material = new THREE.ShaderMaterial({
         uMode: { value: -1 },
         uColor: { value: new THREE.Color() },
         uRadius: { value: 0.08 },
-        uTension: { value: 0.001 },
+        uTension: { value: 0.0005 },
+        uDensity: { value: 0.4 },
         uTime: { value: 0 }
     },
     vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position, 1.0); }`,
@@ -173,10 +172,11 @@ const material = new THREE.ShaderMaterial({
 scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
 
 function reset() {
-    renderer.setClearColor(0xfdfaf0, 1); // Creamy paper color
+    renderer.setClearColor(0xfdfaf0, 1);
     renderer.setRenderTarget(readBuffer); renderer.clear();
     renderer.setRenderTarget(writeBuffer); renderer.clear();
     renderer.setRenderTarget(null);
+    renderer.clear();
 }
 reset();
 
@@ -187,12 +187,21 @@ function animate(time) {
     requestAnimationFrame(animate);
     material.uniforms.uTime.value = time * 0.001;
     material.uniforms.uTension.value = parseFloat(document.getElementById('tensionSlider').value);
+    material.uniforms.uDensity.value = parseFloat(document.getElementById('densitySlider').value);
+
     renderer.setRenderTarget(writeBuffer);
     renderer.render(scene, camera);
-    [readBuffer, writeBuffer] = [writeBuffer, readBuffer];
+    
+    // Ping-pong
+    let temp = readBuffer;
+    readBuffer = writeBuffer;
+    writeBuffer = temp;
+    
     material.uniforms.tPrev.value = readBuffer.texture;
+    
     renderer.setRenderTarget(null);
     renderer.render(scene, camera);
+    
     if (!drawing) material.uniforms.uMode.value = -1;
 }
 
