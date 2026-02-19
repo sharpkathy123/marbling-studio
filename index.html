@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Master Marbling Studio - Micro-Precision</title>
+    <title>Master Marbling Studio - Micro-Precision Only</title>
     <style>
         body { margin: 0; overflow: hidden; background: #0a0a0a; font-family: 'Georgia', serif; touch-action: none; }
         #ui { 
@@ -18,7 +18,6 @@
         button { cursor: pointer; padding: 10px; border: 1px solid #7a5c3e; border-radius: 4px; background: #a67c52; color: #fff; font-weight: 600; transition: 0.2s; }
         button.active { background: #ffd700; color: #3d2b1f; box-shadow: 0 0 10px rgba(255,215,0,0.3); }
         input[type="color"] { width: 100%; height: 45px; border-radius: 4px; border: 2px solid #5c4033; background: #261a12; cursor: pointer; }
-        input[type="range"] { accent-color: #ffd700; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -29,13 +28,9 @@
         <input type="color" id="colorPicker" value="#8b0000">
     </div>
     <div class="group">
-        <span class="label">Needle Width (Micro)</span>
-        <input type="range" id="needleWidth" min="0.001" max="0.05" step="0.001" value="0.005">
-    </div>
-    <div class="group">
         <span class="label">Instruments</span>
         <button id="dropBtn" class="active">Ink (Droplet)</button>
-        <button id="stylusBtn">Needle (Swirl)</button>
+        <button id="stylusBtn">Needle (Micro-Swirl)</button>
         <button id="rakeBtn">Comb (Rake)</button>
     </div>
     <button id="saveBtn" style="background: #4a6741; color: white; border: none; padding: 12px; border-radius: 4px; cursor: pointer;">Dip Paper (Export)</button>
@@ -55,7 +50,6 @@ const fragmentShader = `
     uniform vec2 uPrevMouse;
     uniform int uMode; 
     uniform vec3 uColor;
-    uniform float uNeedleWidth;
     varying vec2 vUv;
 
     void main() {
@@ -77,10 +71,10 @@ const fragmentShader = `
             vec2 advectedUv = uv;
             float dist = distance(uv, uMouse);
             
-            if (uMode == 1) { // MICRO-NEEDLE PHYSICS
-                // We use an exponential falloff to make the "edge" of the needle razor sharp
-                float influence = pow(max(0.0, 1.0 - dist / uNeedleWidth), 4.0);
-                advectedUv -= mouseDir * influence * 2.5;
+            if (uMode == 1) { // HARDEST LOCK MICRO-PRECISION
+                // Radius is now hard-coded to ultra-small 0.005 with 8th power falloff
+                float influence = pow(max(0.0, 1.0 - dist / 0.005), 8.0);
+                advectedUv -= mouseDir * influence * 3.5;
             } else { // Rake
                 vec2 perp = vec2(-(uMouse.y-uPrevMouse.y), uMouse.x-uPrevMouse.x);
                 for(float i = -4.0; i <= 4.0; i++) {
@@ -121,8 +115,7 @@ const material = new THREE.ShaderMaterial({
         uMouse: { value: new THREE.Vector2(-1,-1) },
         uPrevMouse: { value: new THREE.Vector2(-1,-1) },
         uMode: { value: -1 },
-        uColor: { value: new THREE.Color() },
-        uNeedleWidth: { value: 0.005 }
+        uColor: { value: new THREE.Color() }
     },
     vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position, 1.0); }`,
     fragmentShader
@@ -145,19 +138,14 @@ reset();
 
 function animate() {
     requestAnimationFrame(animate);
-    material.uniforms.uNeedleWidth.value = parseFloat(document.getElementById('needleWidth').value);
-    
     renderer.setRenderTarget(currentWrite);
     renderer.render(scene, camera);
     material.uniforms.tPrev.value = currentWrite.texture;
-    
     let temp = currentRead;
     currentRead = currentWrite;
     currentWrite = temp;
-    
     renderer.setRenderTarget(null);
     renderer.render(scene, camera);
-    
     if (!drawing) material.uniforms.uMode.value = -1;
 }
 
