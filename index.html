@@ -3,94 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Marbling Ultra-Fix</title>
+    <title>Marbling Studio - Fresh</title>
     <style>
-        /* The nuclear option for layout: everything is based on Viewport units */
         * { box-sizing: border-box; margin: 0; padding: 0; touch-action: none; }
         
-        html, body { 
+        /* The container fills the whole screen exactly */
+        body { 
             width: 100vw; height: 100dvh; 
-            overflow: hidden; background: #000; position: fixed;
-            font-family: sans-serif;
-        }
-
-        #app {
             display: flex; flex-direction: column;
-            width: 100vw; height: 100dvh;
+            background: #000; color: #eee;
+            font-family: sans-serif; overflow: hidden;
         }
 
-        /* Tray: Locked to top 35% of the screen */
-        #tray-zone {
-            width: 100vw; height: 35dvh;
+        /* Tray: Takes all available space between top and UI */
+        #tray-area {
+            flex: 1; 
             display: flex; align-items: center; justify-content: center;
-            background: #000; border-bottom: 2px solid #3d2b1f;
+            background: #0a0a0a;
         }
 
-        /* UI: Locked to 65% of the screen */
-        #ui-zone {
-            width: 100vw; height: 65dvh;
-            background: #1a110a; color: #e2d1b3;
-            padding: 4vw; display: flex; flex-direction: column; gap: 3vh;
+        /* UI: Pinned to the bottom, height adjusts to content */
+        #ui-area {
+            background: #1a1a1a;
+            padding: 15px;
+            border-top: 1px solid #444;
+            display: flex; flex-direction: column; gap: 12px;
         }
 
-        canvas { background: #fdfaf0; display: block; }
+        canvas { background: #fdfaf0; display: block; border-radius: 4px; }
 
-        .section { width: 100%; display: flex; flex-direction: column; gap: 1vh; }
-        .label { font-size: 3.5vw; font-weight: bold; color: #b39e7d; text-transform: uppercase; }
+        .row { display: flex; gap: 8px; align-items: center; }
+        .label { font-size: 11px; color: #888; text-transform: uppercase; width: 60px; }
 
-        /* Palette: 4 circles perfectly spaced */
-        .palette { display: flex; justify-content: space-between; width: 100%; }
-        .swatch { width: 18vw; height: 18vw; border-radius: 50%; border: 1vw solid #3d2b1f; }
+        .palette { display: flex; gap: 10px; flex: 1; }
+        .swatch { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #333; }
         .swatch.active { border-color: #ffd700; transform: scale(1.1); }
 
-        /* Buttons: Scaled to width */
-        .btn-row { display: flex; gap: 2vw; width: 100%; }
         button { 
-            flex: 1; height: 12vw; border: none; border-radius: 2vw; 
-            background: #a67c52; color: #fff; font-size: 3.5vw; font-weight: bold;
+            flex: 1; padding: 12px; border: none; border-radius: 6px; 
+            background: #444; color: #fff; font-size: 12px; font-weight: bold;
         }
         button.active { background: #ffd700; color: #000; }
-
-        input[type="range"] { width: 100%; height: 8vw; accent-color: #ffd700; }
+        
+        input[type="range"] { flex: 1; accent-color: #ffd700; }
     </style>
 </head>
 <body>
 
-<div id="app">
-    <div id="tray-zone">
-        <canvas id="mCanvas"></canvas>
+<div id="tray-area">
+    <canvas id="mCanvas"></canvas>
+</div>
+
+<div id="ui-area">
+    <div class="row">
+        <div class="label">Colors</div>
+        <div class="palette">
+            <div class="swatch active" style="background:#8b0000" data-color="#8b0000"></div>
+            <div class="swatch" style="background:#003366" data-color="#003366"></div>
+            <div class="swatch" style="background:#ccac00" data-color="#ccac00"></div>
+            <div class="swatch" style="background:#224422" data-color="#224422"></div>
+        </div>
     </div>
 
-    <div id="ui-zone">
-        <div class="section">
-            <div class="label">Pigment Select</div>
-            <div class="palette">
-                <div class="swatch active" style="background:#8b0000" data-color="#8b0000"></div>
-                <div class="swatch" style="background:#003366" data-color="#003366"></div>
-                <div class="swatch" style="background:#ccac00" data-color="#ccac00"></div>
-                <div class="swatch" style="background:#224422" data-color="#224422"></div>
-            </div>
-        </div>
+    <div class="row">
+        <div class="label">Size</div>
+        <input type="range" id="size" min="0.1" max="3.0" step="0.1" value="1.0">
+    </div>
 
-        <div class="section">
-            <div class="label">Dynamics (Flow & Size)</div>
-            <input type="range" id="visc" min="0.2" max="3.0" step="0.1" value="1.2">
-            <input type="range" id="size" min="0.1" max="4.0" step="0.1" value="1.0">
-        </div>
-
-        <div class="section">
-            <div class="label">Tools</div>
-            <div class="btn-row">
-                <button id="btnDrop" class="active">Drop</button>
-                <button id="btnNeedle">Needle</button>
-                <button id="btnRake">Rake</button>
-            </div>
-        </div>
-
-        <div class="btn-row" style="margin-top: auto;">
-            <button id="btnSave" style="background:#4a6741">Export Art</button>
-            <button id="btnReset" style="background:#5c2d2d">Reset Tray</button>
-        </div>
+    <div class="row">
+        <button id="btnDrop" class="active">Drop</button>
+        <button id="btnNeedle">Needle</button>
+        <button id="btnRake">Rake</button>
+        <button id="btnSave" style="background:#2a4d2a">Save</button>
     </div>
 </div>
 
@@ -100,7 +84,7 @@ import * as THREE from 'three';
 
 const fragmentShader = `
     uniform sampler2D tPrev; uniform vec2 uMouse; uniform vec2 uPrevMouse;
-    uniform int uMode; uniform vec3 uColor; uniform float uVisc; uniform float uSize;
+    uniform int uMode; uniform vec3 uColor; uniform float uSize;
     varying vec2 vUv;
     void main() {
         vec2 uv = vUv; vec3 paper = vec3(0.99, 0.98, 0.94);
@@ -111,17 +95,9 @@ const fragmentShader = `
             gl_FragColor = (d < r) ? vec4(uColor, 1.0) : b;
         } else if (uMode > 0) {
             vec2 dir = uMouse - uPrevMouse; vec2 advUv = uv;
-            if (uMode == 1) {
-                float d = distance(uv, uMouse); float inf = exp(-d / (0.008 * uSize));
-                advUv -= dir * inf * uVisc;
-            } else {
-                vec2 perp = vec2(-(uMouse.y-uPrevMouse.y), uMouse.x-uPrevMouse.x);
-                for(float i = -3.0; i <= 3.0; i++) {
-                    vec2 nPos = uMouse + (normalize(perp + 0.00001) * i * 0.12);
-                    float inf = exp(-distance(uv, nPos) / (0.015 * uSize));
-                    advUv -= dir * inf * (uVisc * 0.7);
-                }
-            }
+            float d = distance(uv, uMouse); 
+            float inf = exp(-d / (uMode == 1 ? 0.01 : 0.03) * uSize);
+            advUv -= dir * inf;
             vec4 s = texture2D(tPrev, advUv); gl_FragColor = (s.a < 0.1) ? vec4(paper, 1.0) : s;
         } else {
             vec4 c = texture2D(tPrev, uv); gl_FragColor = (c.a < 0.1) ? vec4(paper, 1.0) : c;
@@ -131,18 +107,19 @@ const fragmentShader = `
 
 const canvas = document.getElementById('mCanvas');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
-let tSize, read, write;
+let tSize, read, write, activeColor = "#8b0000", activeMode = 0, drawing = false;
+
 const scene = new THREE.Scene(), camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 const material = new THREE.ShaderMaterial({
-    uniforms: { tPrev: { value: null }, uMouse: { value: new THREE.Vector2(-1,-1) }, uPrevMouse: { value: new THREE.Vector2(-1,-1) }, uMode: { value: -1 }, uColor: { value: new THREE.Color() }, uVisc: { value: 1.2 }, uSize: { value: 1.0 } },
+    uniforms: { tPrev: { value: null }, uMouse: { value: new THREE.Vector2(-1,-1) }, uPrevMouse: { value: new THREE.Vector2(-1,-1) }, uMode: { value: -1 }, uColor: { value: new THREE.Color() }, uSize: { value: 1.0 } },
     vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position, 1.0); }`,
     fragmentShader
 });
 scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
 
 function init() {
-    const zone = document.getElementById('tray-zone');
-    tSize = Math.min(zone.clientWidth, zone.clientHeight) - 10;
+    const area = document.getElementById('tray-area');
+    tSize = Math.min(area.clientWidth, area.clientHeight) - 20;
     renderer.setSize(tSize, tSize);
     read = new THREE.WebGLRenderTarget(tSize, tSize);
     write = new THREE.WebGLRenderTarget(tSize, tSize);
@@ -152,20 +129,18 @@ function init() {
     renderer.setRenderTarget(null);
 }
 
-function animate() {
-    requestAnimationFrame(animate);
-    material.uniforms.uVisc.value = parseFloat(document.getElementById('visc').value);
-    material.uniforms.uSize.value = parseFloat(document.getElementById('size').value);
-    if (material.uniforms.uMode.value !== -1) {
-        renderer.setRenderTarget(write); renderer.render(scene, camera);
-        material.uniforms.tPrev.value = write.texture;
-        [read, write] = [write, read];
-        renderer.setRenderTarget(null);
-    }
-    renderer.render(scene, camera);
+function step() {
+    renderer.setRenderTarget(write); renderer.render(scene, camera);
+    material.uniforms.tPrev.value = write.texture;
+    [read, write] = [write, read];
+    renderer.setRenderTarget(null); renderer.render(scene, camera);
 }
 
-let activeColor = "#8b0000", activeMode = 0, drawing = false;
+function animate() {
+    requestAnimationFrame(animate);
+    material.uniforms.uSize.value = parseFloat(document.getElementById('size').value);
+    if (material.uniforms.uMode.value !== -1) step();
+}
 
 const getMouse = (e) => {
     const rect = canvas.getBoundingClientRect();
@@ -175,7 +150,7 @@ const getMouse = (e) => {
 };
 
 window.addEventListener('touchstart', (e) => {
-    if (e.target.closest('#ui-zone')) return;
+    if (e.target.closest('#ui-area')) return;
     const pos = getMouse(e);
     material.uniforms.uMouse.value.copy(pos); material.uniforms.uPrevMouse.value.copy(pos);
     material.uniforms.uMode.value = activeMode; material.uniforms.uColor.value.set(activeColor);
@@ -200,14 +175,12 @@ document.querySelectorAll('.swatch').forEach(sw => {
 document.getElementById('btnDrop').onclick = () => { activeMode = 0; upd(0); };
 document.getElementById('btnNeedle').onclick = () => { activeMode = 1; upd(1); };
 document.getElementById('btnRake').onclick = () => { activeMode = 2; upd(2); };
-document.getElementById('btnReset').onclick = () => init();
 document.getElementById('btnSave').onclick = () => {
     const link = document.createElement('a'); link.download = 'art.png'; link.href = canvas.toDataURL(); link.click();
 };
 
 function upd(m) {
-    const ids = ['btnDrop', 'btnNeedle', 'btnRake'];
-    ids.forEach((id, i) => document.getElementById(id).classList.toggle('active', i === m));
+    ['btnDrop', 'btnNeedle', 'btnRake'].forEach((id, i) => document.getElementById(id).classList.toggle('active', i === m));
 }
 
 window.addEventListener('resize', init);
