@@ -2,88 +2,83 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Master Marbling Studio - Full Workspace</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Master Marbling - Tilt Studio</title>
     <style>
+        * { box-sizing: border-box; }
         body { 
-            margin: 0; background: #000; font-family: 'Segoe UI', system-ui, sans-serif; 
+            margin: 0; padding: 0; background: #000; font-family: sans-serif; 
             display: flex; height: 100vh; width: 100vw; overflow: hidden; color: #e2d1b3;
         }
-        #stage {
-            flex-grow: 1; /* Takes up the most space */
-            background: #000;
-            display: flex;
-            align-items: center;
-            justify-content: flex-start; /* Flush to the left */
+        #app-container { display: flex; width: 100%; height: 100%; }
+
+        @media (orientation: portrait) {
+            #app-container { flex-direction: column; }
+            #ui { width: 100%; height: auto; border-bottom: 2px solid #3d2b1f; }
+            #stage { flex: 1; width: 100%; }
         }
-        canvas { 
-            background: #fdfaf0; 
-            border-right: 4px solid #3d2b1f; /* Visual separator from UI */
-            cursor: crosshair;
+
+        @media (orientation: landscape) {
+            #app-container { flex-direction: row; }
+            #ui { width: 280px; height: 100%; border-right: 2px solid #3d2b1f; }
+            #stage { flex: 1; height: 100%; }
         }
+
         #ui { 
-            width: 350px; /* Fixed width for the control bay */
-            height: 100vh;
-            background: linear-gradient(180deg, #261a12 0%, #1a110b 100%);
-            border-left: 2px solid #5c4033;
-            display: flex;
-            flex-direction: column;
-            padding: 30px;
-            box-sizing: border-box;
-            gap: 25px;
-            box-shadow: -10px 0 50px rgba(0,0,0,0.8);
+            background: #1e140d; padding: 12px; 
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px; overflow-y: auto; z-index: 100;
         }
-        .group { display: flex; flex-direction: column; gap: 10px; }
-        .label { font-size: 11px; font-weight: 800; color: #b39e7d; text-transform: uppercase; letter-spacing: 2px; }
-        button { 
-            cursor: pointer; padding: 15px; border: 1px solid #7a5c3e; 
-            border-radius: 6px; background: #a67c52; color: #fff; 
-            font-weight: 600; font-size: 14px; transition: 0.2s;
-        }
-        button.active { background: #ffd700; color: #3d2b1f; border-color: #fff; transform: scale(1.02); }
-        input[type="range"] { accent-color: #ffd700; width: 100%; margin-top: 10px; }
-        input[type="color"] { width: 100%; height: 60px; border: 2px solid #5c4033; border-radius: 6px; background: #1a110b; cursor: pointer; }
-        .footer-tools { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
-        .footer-tools button { padding: 12px; }
-        select { background: #3d2b1f; color: #e2d1b3; border: 1px solid #5c4033; padding: 12px; border-radius: 6px; font-size: 14px; }
+
+        #stage { background: #0a0a0a; display: flex; align-items: center; justify-content: center; }
+        canvas { background: #fdfaf0; cursor: crosshair; touch-action: none; }
+
+        .group { display: flex; flex-direction: column; gap: 4px; }
+        .label { font-size: 9px; font-weight: 800; color: #b39e7d; text-transform: uppercase; }
+        button { cursor: pointer; padding: 10px; border: 1px solid #7a5c3e; border-radius: 4px; background: #a67c52; color: #fff; font-size: 11px; }
+        button.active { background: #ffd700; color: #3d2b1f; }
+        input[type="range"] { accent-color: #ffd700; width: 100%; }
+        input[type="color"] { width: 100%; height: 30px; border-radius: 4px; background: #000; border: 1px solid #3d2b1f; }
+        .actions { grid-column: 1 / -1; display: flex; gap: 8px; }
+        .actions button { flex: 1; }
+        #tiltStatus { font-size: 8px; color: #ffd700; text-align: center; grid-column: 1/-1; }
     </style>
 </head>
 <body>
 
-<div id="stage">
-    <div id="canvas-holder"></div>
-</div>
-
-<div id="ui">
-    <div class="group">
-        <span class="label">Tray Geometry</span>
-        <select id="sizeSelect">
-            <option value="square" selected>Square (1:1)</option>
-            <option value="wide">Cinema Wide (21:9)</option>
-            <option value="fill">Fill Available Space</option>
-        </select>
+<div id="app-container">
+    <div id="ui">
+        <div class="group">
+            <span class="label">Color</span>
+            <input type="color" id="colorPicker" value="#8b0000">
+        </div>
+        <div class="group">
+            <span class="label">Viscosity</span>
+            <input type="range" id="viscositySlider" min="0.2" max="3.0" step="0.1" value="1.2">
+        </div>
+        <div class="group">
+            <span class="label">Tip Size</span>
+            <input type="range" id="sizeSlider" min="0.2" max="3.0" step="0.1" value="1.0">
+        </div>
+        <div class="group">
+            <span class="label">Instrument</span>
+            <div style="display:flex; gap:2px">
+                <button id="dropBtn" class="active" style="flex:1">Drop</button>
+                <button id="stylusBtn" style="flex:1">Needle</button>
+                <button id="rakeBtn" style="flex:1">Rake</button>
+            </div>
+        </div>
+        <div class="actions">
+            <button id="undoBtn" style="background:#3d2b1f" disabled>Undo</button>
+            <button id="resetBtn" style="background:transparent; color:#888; border:1px solid #3d2b1f">Clear</button>
+            <button id="saveBtn" style="background:#4a6741">Save</button>
+        </div>
+        <div id="tiltStatus">Tilt Active: Use device to drift paint</div>
+        <button id="permBtn" style="grid-column: 1/-1; font-size: 9px; padding: 4px;">Enable Motion (iOS)</button>
     </div>
 
-    <div class="group">
-        <span class="label">Pigment Color</span>
-        <input type="color" id="colorPicker" value="#8b0000">
-    </div>
-
-    <div class="group">
-        <span class="label">Film Viscosity: <span id="vVal">1.2</span></span>
-        <input type="range" id="viscositySlider" min="0.2" max="2.5" step="0.1" value="1.2">
-    </div>
-
-    <div class="group">
-        <span class="label">Instruments</span>
-        <button id="dropBtn" class="active">Fluid Ink Drop</button>
-        <button id="stylusBtn">Fine Precision Needle</button>
-        <button id="rakeBtn">Multi-Tine Comb</button>
-    </div>
-
-    <div class="footer-tools">
-        <button id="undoBtn" style="background:#422e23" disabled>Undo Stroke</button>
-        <button id="resetBtn" style="background:transparent; color:#b39e7d; border:1px solid #5c4033">Clear Tray</button>
-        <button id="saveBtn" style="background:#4a6741; border:none; height: 60px; font-size: 18px;">Dip Paper (Export)</button>
+    <div id="stage">
+        <div id="canvas-holder"></div>
     </div>
 </div>
 
@@ -98,18 +93,23 @@ const fragmentShader = `
     uniform sampler2D tPrev;
     uniform vec2 uMouse;
     uniform vec2 uPrevMouse;
+    uniform vec2 uTilt;
     uniform int uMode; 
     uniform vec3 uColor;
     uniform float uViscosity;
+    uniform float uBrushSize;
     varying vec2 vUv;
 
     void main() {
         vec2 uv = vUv;
         vec3 paper = vec3(0.99, 0.98, 0.94);
         
-        if (uMode == 0) { // Expansion
+        // Apply Tilt Drift
+        vec2 driftUv = uv - (uTilt * 0.002);
+
+        if (uMode == 0) {
             float d = distance(uv, uMouse);
-            float r = 0.05;
+            float r = 0.05 * uBrushSize;
             if (d > 0.0001) {
                 float m = sqrt(1.0 + (r*r)/(d*d));
                 uv = uMouse + (uv - uMouse)/m;
@@ -117,25 +117,25 @@ const fragmentShader = `
             vec4 b = texture2D(tPrev, uv);
             if(b.a < 0.1) b = vec4(paper, 1.0);
             gl_FragColor = (d < r) ? vec4(uColor, 1.0) : b;
-        } else if (uMode > 0) { // Stretching
+        } else if (uMode > 0) {
             vec2 dir = uMouse - uPrevMouse;
             vec2 advUv = uv;
-            if (uMode == 1) { // Needle (0.1x size)
+            if (uMode == 1) {
                 float d = distance(uv, uMouse);
-                float inf = exp(-d / 0.008);
+                float inf = exp(-d / (0.008 * uBrushSize));
                 advUv -= dir * inf * uViscosity;
-            } else { // Rake
+            } else {
                 vec2 perp = vec2(-(uMouse.y-uPrevMouse.y), uMouse.x-uPrevMouse.x);
                 for(float i = -4.0; i <= 4.0; i++) {
                     vec2 nPos = uMouse + (normalize(perp + 0.00001) * i * 0.1);
-                    float inf = exp(-distance(uv, nPos) / 0.015);
+                    float inf = exp(-distance(uv, nPos) / (0.015 * uBrushSize));
                     advUv -= dir * inf * (uViscosity * 0.7);
                 }
             }
             vec4 s = texture2D(tPrev, advUv);
             gl_FragColor = (s.a < 0.1) ? vec4(paper, 1.0) : s;
         } else {
-            vec4 c = texture2D(tPrev, uv);
+            vec4 c = texture2D(tPrev, driftUv);
             gl_FragColor = (c.a < 0.1) ? vec4(paper, 1.0) : c;
         }
     }
@@ -147,39 +147,25 @@ document.getElementById('canvas-holder').appendChild(renderer.domElement);
 
 let read, write;
 const history = [];
+const tiltVec = new THREE.Vector2(0, 0);
 
 const scene = new THREE.Scene();
 const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 const material = new THREE.ShaderMaterial({
     uniforms: {
-        tPrev: { value: null },
-        uMouse: { value: new THREE.Vector2(-1,-1) },
-        uPrevMouse: { value: new THREE.Vector2(-1,-1) },
-        uMode: { value: -1 },
-        uColor: { value: new THREE.Color() },
-        uViscosity: { value: 1.2 }
+        tPrev: { value: null }, uMouse: { value: new THREE.Vector2(-1,-1) },
+        uPrevMouse: { value: new THREE.Vector2(-1,-1) }, uTilt: { value: tiltVec },
+        uMode: { value: -1 }, uColor: { value: new THREE.Color() },
+        uViscosity: { value: 1.2 }, uBrushSize: { value: 1.0 }
     },
     vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position, 1.0); }`,
     fragmentShader
 });
 scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
 
-function resizeTray() {
-    const type = document.getElementById('sizeSelect').value;
-    const vh = window.innerHeight;
-    const vw = window.innerWidth - 350; // Total width minus UI width
-
-    if(type === 'square') {
-        width = height = vh;
-    } else if(type === 'wide') {
-        width = vw;
-        height = vw * (9/21);
-        if (height > vh) { height = vh; width = vh * (21/9); }
-    } else { // Fill
-        width = vw;
-        height = vh;
-    }
-
+function resize() {
+    const stage = document.getElementById('stage');
+    width = stage.clientWidth; height = stage.clientHeight;
     renderer.setSize(width, height);
     read = new THREE.WebGLRenderTarget(width, height);
     write = new THREE.WebGLRenderTarget(width, height);
@@ -192,16 +178,34 @@ function reset() {
     [read, write].forEach(rt => { renderer.setRenderTarget(rt); renderer.clear(); });
     renderer.setRenderTarget(null);
     history.forEach(rt => rt.dispose()); history.length = 0;
-    updateUndoBtn();
+    document.getElementById('undoBtn').disabled = true;
 }
+
+// iOS Permission Handling
+document.getElementById('permBtn').onclick = () => {
+    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+        DeviceOrientationEvent.requestPermission().then(state => {
+            if (state === 'granted') document.getElementById('permBtn').style.display = 'none';
+        });
+    }
+};
+
+window.addEventListener('deviceorientation', (e) => {
+    // Basic orientation to drift mapping
+    const isPortrait = window.innerHeight > window.innerWidth;
+    if (isPortrait) {
+        tiltVec.set(e.gamma / 45, -e.beta / 45);
+    } else {
+        tiltVec.set(e.beta / 45, e.gamma / 45);
+    }
+});
 
 function captureState() {
     const snap = new THREE.WebGLRenderTarget(width, height);
-    renderer.setRenderTarget(snap);
-    renderer.render(scene, camera);
+    renderer.setRenderTarget(snap); renderer.render(scene, camera);
     history.push(snap);
-    if (history.length > 20) history.shift().dispose();
-    updateUndoBtn();
+    if (history.length > 15) history.shift().dispose();
+    document.getElementById('undoBtn').disabled = false;
 }
 
 function undo() {
@@ -213,17 +217,13 @@ function undo() {
     renderer.setRenderTarget(null);
     material.uniforms.tPrev.value = read.texture;
     last.dispose();
-    updateUndoBtn();
+    document.getElementById('undoBtn').disabled = history.length === 0;
 }
-
-function updateUndoBtn() { document.getElementById('undoBtn').disabled = history.length === 0; }
 
 function animate() {
     requestAnimationFrame(animate);
-    const v = parseFloat(document.getElementById('viscositySlider').value);
-    material.uniforms.uViscosity.value = v;
-    document.getElementById('vVal').innerText = v;
-    
+    material.uniforms.uViscosity.value = parseFloat(document.getElementById('viscositySlider').value);
+    material.uniforms.uBrushSize.value = parseFloat(document.getElementById('sizeSlider').value);
     renderer.setRenderTarget(write);
     renderer.render(scene, camera);
     material.uniforms.tPrev.value = write.texture;
@@ -234,10 +234,13 @@ function animate() {
 
 const getMouse = (e) => {
     const rect = renderer.domElement.getBoundingClientRect();
-    return new THREE.Vector2((e.clientX - rect.left)/width, 1 - (e.clientY - rect.top)/height);
+    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+    const cy = e.touches ? e.touches[0].clientY : e.clientY;
+    return new THREE.Vector2((cx - rect.left)/width, 1 - (cy - rect.top)/height);
 };
 
-renderer.domElement.addEventListener('pointerdown', (e) => {
+const onDown = (e) => {
+    if (e.target.closest('#ui')) return;
     captureState();
     const pos = getMouse(e);
     material.uniforms.uMouse.value.copy(pos);
@@ -245,19 +248,23 @@ renderer.domElement.addEventListener('pointerdown', (e) => {
     material.uniforms.uMode.value = activeMode;
     material.uniforms.uColor.value.set(document.getElementById('colorPicker').value);
     drawing = true;
-});
+};
 
-window.addEventListener('pointermove', (e) => {
+const onMove = (e) => {
     if (!drawing) return;
     material.uniforms.uPrevMouse.value.copy(material.uniforms.uMouse.value);
     material.uniforms.uMouse.value.copy(getMouse(e));
-});
+};
 
-window.addEventListener('pointerup', () => { drawing = false; material.uniforms.uMode.value = -1; });
+window.addEventListener('mousedown', onDown);
+window.addEventListener('mousemove', onMove);
+window.addEventListener('mouseup', () => { drawing = false; material.uniforms.uMode.value = -1; });
+window.addEventListener('touchstart', onDown, {passive: false});
+window.addEventListener('touchmove', onMove, {passive: false});
+window.addEventListener('touchend', () => { drawing = false; material.uniforms.uMode.value = -1; });
 
-let drawing = false;
-let activeMode = 0;
-document.getElementById('sizeSelect').onchange = resizeTray;
+let drawing = false, activeMode = 0;
+window.addEventListener('resize', resize);
 document.getElementById('undoBtn').onclick = undo;
 document.getElementById('resetBtn').onclick = reset;
 document.getElementById('dropBtn').onclick = () => { activeMode = 0; setActive('dropBtn'); };
@@ -265,7 +272,7 @@ document.getElementById('stylusBtn').onclick = () => { activeMode = 1; setActive
 document.getElementById('rakeBtn').onclick = () => { activeMode = 2; setActive('rakeBtn'); };
 document.getElementById('saveBtn').onclick = () => {
     const link = document.createElement('a');
-    link.download = 'marbling_canvas.png';
+    link.download = 'marbling.png';
     link.href = renderer.domElement.toDataURL();
     link.click();
 };
@@ -274,7 +281,7 @@ function setActive(id) {
     ['dropBtn', 'stylusBtn', 'rakeBtn'].forEach(b => document.getElementById(b).classList.toggle('active', b === id));
 }
 
-resizeTray();
+resize();
 animate();
 </script>
 </body>
