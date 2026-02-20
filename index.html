@@ -3,45 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Marbling Studio - Fresh</title>
+    <title>Wooden Marbling Studio</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; touch-action: none; }
         
-        /* The container fills the whole screen exactly */
         body { 
             width: 100vw; height: 100dvh; 
+            background: #000;
             display: flex; flex-direction: column;
-            background: #000; color: #eee;
-            font-family: sans-serif; overflow: hidden;
+            overflow: hidden;
         }
 
-        /* Tray: Takes all available space between top and UI */
-        #tray-area {
-            flex: 1; 
+        /* The Wooden Boxes */
+        .wooden-box {
+            border: 8px solid #3d2b1f; /* "Frame" */
+            background-color: #5c4033; /* "Wood grain" base */
+            background-image: repeating-linear-gradient(45deg, rgba(0,0,0,0.05) 0px, rgba(0,0,0,0.05) 2px, transparent 2px, transparent 4px);
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.5);
             display: flex; align-items: center; justify-content: center;
-            background: #0a0a0a;
         }
 
-        /* UI: Pinned to the bottom, height adjusts to content */
-        #ui-area {
-            background: #1a1a1a;
+        /* Top Box: The Tray */
+        #tray-box {
+            flex: 1; /* Takes up all available top space */
+            margin: 5px;
+            border-radius: 8px;
+        }
+
+        /* Bottom Box: The UI */
+        #ui-box {
+            flex: 0 0 auto; /* Height is determined by its buttons */
+            margin: 5px;
             padding: 15px;
-            border-top: 1px solid #444;
-            display: flex; flex-direction: column; gap: 12px;
+            border-radius: 8px;
+            flex-direction: column;
+            gap: 10px;
         }
 
-        canvas { background: #fdfaf0; display: block; border-radius: 4px; }
+        canvas { 
+            background: #fdfaf0; 
+            display: block; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.8);
+        }
 
-        .row { display: flex; gap: 8px; align-items: center; }
-        .label { font-size: 11px; color: #888; text-transform: uppercase; width: 60px; }
-
-        .palette { display: flex; gap: 10px; flex: 1; }
-        .swatch { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #333; }
+        .row { display: flex; width: 100%; gap: 10px; }
+        
+        .swatch { width: 35px; height: 35px; border-radius: 4px; border: 2px solid #222; }
         .swatch.active { border-color: #ffd700; transform: scale(1.1); }
 
         button { 
-            flex: 1; padding: 12px; border: none; border-radius: 6px; 
-            background: #444; color: #fff; font-size: 12px; font-weight: bold;
+            flex: 1; padding: 12px 0; border: none; border-radius: 4px; 
+            background: #8b5a2b; color: #fff; font-size: 12px; font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.4);
         }
         button.active { background: #ffd700; color: #000; }
         
@@ -50,23 +63,16 @@
 </head>
 <body>
 
-<div id="tray-area">
+<div id="tray-box" class="wooden-box">
     <canvas id="mCanvas"></canvas>
 </div>
 
-<div id="ui-area">
+<div id="ui-box" class="wooden-box">
     <div class="row">
-        <div class="label">Colors</div>
-        <div class="palette">
-            <div class="swatch active" style="background:#8b0000" data-color="#8b0000"></div>
-            <div class="swatch" style="background:#003366" data-color="#003366"></div>
-            <div class="swatch" style="background:#ccac00" data-color="#ccac00"></div>
-            <div class="swatch" style="background:#224422" data-color="#224422"></div>
-        </div>
-    </div>
-
-    <div class="row">
-        <div class="label">Size</div>
+        <div class="swatch active" style="background:#8b0000" data-color="#8b0000"></div>
+        <div class="swatch" style="background:#003366" data-color="#003366"></div>
+        <div class="swatch" style="background:#ccac00" data-color="#ccac00"></div>
+        <div class="swatch" style="background:#224422" data-color="#224422"></div>
         <input type="range" id="size" min="0.1" max="3.0" step="0.1" value="1.0">
     </div>
 
@@ -74,7 +80,7 @@
         <button id="btnDrop" class="active">Drop</button>
         <button id="btnNeedle">Needle</button>
         <button id="btnRake">Rake</button>
-        <button id="btnSave" style="background:#2a4d2a">Save</button>
+        <button id="btnSave" style="background:#3d5c33">Save</button>
     </div>
 </div>
 
@@ -118,8 +124,8 @@ const material = new THREE.ShaderMaterial({
 scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
 
 function init() {
-    const area = document.getElementById('tray-area');
-    tSize = Math.min(area.clientWidth, area.clientHeight) - 20;
+    const area = document.getElementById('tray-box');
+    tSize = Math.min(area.clientWidth, area.clientHeight) - 30;
     renderer.setSize(tSize, tSize);
     read = new THREE.WebGLRenderTarget(tSize, tSize);
     write = new THREE.WebGLRenderTarget(tSize, tSize);
@@ -129,17 +135,16 @@ function init() {
     renderer.setRenderTarget(null);
 }
 
-function step() {
-    renderer.setRenderTarget(write); renderer.render(scene, camera);
-    material.uniforms.tPrev.value = write.texture;
-    [read, write] = [write, read];
-    renderer.setRenderTarget(null); renderer.render(scene, camera);
-}
-
 function animate() {
     requestAnimationFrame(animate);
     material.uniforms.uSize.value = parseFloat(document.getElementById('size').value);
-    if (material.uniforms.uMode.value !== -1) step();
+    if (material.uniforms.uMode.value !== -1) {
+        renderer.setRenderTarget(write); renderer.render(scene, camera);
+        material.uniforms.tPrev.value = write.texture;
+        [read, write] = [write, read];
+        renderer.setRenderTarget(null);
+    }
+    renderer.render(scene, camera);
 }
 
 const getMouse = (e) => {
@@ -150,7 +155,7 @@ const getMouse = (e) => {
 };
 
 window.addEventListener('touchstart', (e) => {
-    if (e.target.closest('#ui-area')) return;
+    if (e.target.closest('#ui-box')) return;
     const pos = getMouse(e);
     material.uniforms.uMouse.value.copy(pos); material.uniforms.uPrevMouse.value.copy(pos);
     material.uniforms.uMode.value = activeMode; material.uniforms.uColor.value.set(activeColor);
