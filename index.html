@@ -3,95 +3,95 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Master Marbling - Precision Square</title>
+    <title>Master Marbling - Palette Edition</title>
     <style>
         * { box-sizing: border-box; }
-        body { 
-            margin: 0; padding: 0; background: #000; font-family: system-ui, sans-serif; 
-            display: flex; height: 100vh; width: 100vw; overflow: hidden; color: #e2d1b3;
+        body, html { 
+            margin: 0; padding: 0; width: 100vw; height: 100vh; 
+            overflow: hidden; background: #000; font-family: system-ui, sans-serif;
         }
 
-        #app-container {
-            display: flex;
-            width: 100%;
-            height: 100%;
-        }
+        #app-container { display: grid; width: 100vw; height: 100vh; }
 
-        /* Portrait Logic */
+        /* Portrait: Square Top, UI Bottom filler */
         @media (orientation: portrait) {
-            #app-container { flex-direction: column-reverse; } /* Tray at top, UI fills bottom */
-            #stage { width: 100vw; height: 100vw; flex-shrink: 0; }
-            #ui { flex: 1; width: 100%; border-top: 2px solid #3d2b1f; overflow-y: auto; }
+            #app-container { grid-template-rows: 100vw 1fr; grid-template-columns: 100vw; }
+            #ui { border-top: 2px solid #3d2b1f; }
         }
 
-        /* Landscape Logic */
+        /* Landscape: Square Left, UI Right filler */
         @media (orientation: landscape) {
-            #app-container { flex-direction: row; }
-            #stage { height: 100vh; width: 100vh; flex-shrink: 0; }
-            #ui { flex: 1; height: 100%; border-left: 2px solid #3d2b1f; overflow-y: auto; }
+            #app-container { grid-template-columns: 100vh 1fr; grid-template-rows: 100vh; }
+            #ui { border-left: 2px solid #3d2b1f; }
         }
 
+        #stage { background: #0a0a0a; display: flex; align-items: center; justify-content: center; overflow: hidden; }
         #ui { 
-            background: #1e140d;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
+            background: #1e140d; padding: 15px; display: flex; flex-direction: column; 
+            gap: 12px; overflow-y: auto; color: #e2d1b3; 
         }
 
-        #stage { background: #0a0a0a; display: flex; align-items: center; justify-content: center; }
         canvas { background: #fdfaf0; touch-action: none; display: block; }
 
-        .group { display: flex; flex-direction: column; gap: 6px; }
-        .label { font-size: 10px; font-weight: 800; color: #b39e7d; text-transform: uppercase; letter-spacing: 1px; }
-        .val { float: right; color: #ffd700; font-family: monospace; }
+        .group { display: flex; flex-direction: column; gap: 5px; }
+        .label { font-size: 10px; font-weight: 800; color: #b39e7d; text-transform: uppercase; }
         
-        button { 
-            cursor: pointer; padding: 12px; border: 1px solid #7a5c3e; 
-            border-radius: 4px; background: #a67c52; color: #fff; font-size: 13px;
+        /* Palette Styles */
+        .palette-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 5px; }
+        .swatch { 
+            height: 40px; border-radius: 4px; border: 2px solid #3d2b1f; 
+            cursor: pointer; transition: 0.2s; 
         }
-        button.active { background: #ffd700; color: #3d2b1f; border-color: #fff; }
-        
-        input[type="range"] { accent-color: #ffd700; width: 100%; cursor: pointer; }
-        input[type="color"] { width: 100%; height: 40px; border-radius: 4px; background: #000; border: 1px solid #3d2b1f; cursor: pointer; }
-        
-        .footer-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: auto; padding-top: 10px; }
+        .swatch.active { border-color: #ffd700; transform: scale(1.05); box-shadow: 0 0 10px rgba(255,215,0,0.3); }
+
+        button { 
+            cursor: pointer; padding: 10px; border: 1px solid #7a5c3e; 
+            border-radius: 4px; background: #a67c52; color: #fff; font-size: 12px;
+        }
+        button.active { background: #ffd700; color: #3d2b1f; font-weight: bold; }
+        input[type="range"] { accent-color: #ffd700; cursor: pointer; }
+        input[type="color"] { width: 100%; height: 30px; border: 1px solid #3d2b1f; background: #000; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div id="app-container">
-    <div id="stage">
-        <div id="canvas-holder"></div>
-    </div>
-
+    <div id="stage"></div>
     <div id="ui">
         <div class="group">
-            <span class="label">Pigment</span>
+            <span class="label">Pigment Palette</span>
+            <div class="palette-grid" id="palette">
+                <div class="swatch active" style="background:#8b0000" data-color="#8b0000"></div>
+                <div class="swatch" style="background:#003366" data-color="#003366"></div>
+                <div class="swatch" style="background:#ccac00" data-color="#ccac00"></div>
+                <div class="swatch" style="background:#224422" data-color="#224422"></div>
+            </div>
             <input type="color" id="colorPicker" value="#8b0000">
         </div>
         
         <div class="group">
-            <span class="label">Viscosity <span class="val" id="vV">1.2</span></span>
+            <span class="label">Viscosity / Stretch</span>
             <input type="range" id="viscositySlider" min="0.2" max="3.0" step="0.1" value="1.2">
         </div>
         
         <div class="group">
-            <span class="label">Tip Size <span class="val" id="sV">1.0</span></span>
+            <span class="label">Tip Size</span>
             <input type="range" id="sizeSlider" min="0.1" max="4.0" step="0.1" value="1.0">
         </div>
 
         <div class="group">
             <span class="label">Instruments</span>
-            <button id="dropBtn" class="active">Fluid Drop</button>
-            <button id="stylusBtn" style="margin-top:5px">Needle</button>
-            <button id="rakeBtn" style="margin-top:5px">The Rake</button>
+            <div style="display:flex; gap:4px">
+                <button id="dropBtn" class="active" style="flex:1">Drop</button>
+                <button id="stylusBtn" style="flex:1">Needle</button>
+                <button id="rakeBtn" style="flex:1">Rake</button>
+            </div>
         </div>
 
-        <div class="footer-actions">
+        <div style="margin-top: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
             <button id="undoBtn" style="background:#3d2b1f" disabled>Undo</button>
-            <button id="resetBtn" style="background:transparent; color:#888; border:1px solid #3d2b1f">Clear</button>
-            <button id="saveBtn" style="background:#4a6741; border:none; grid-column: span 2; height: 50px; font-size: 16px;">Export Art</button>
+            <button id="resetBtn" style="background:transparent; border:1px solid #3d2b1f">Clear</button>
+            <button id="saveBtn" style="background:#4a6741; grid-column: span 2;">Export Artwork</button>
         </div>
     </div>
 </div>
@@ -151,7 +151,7 @@ const fragmentShader = `
 
 let size;
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-document.getElementById('canvas-holder').appendChild(renderer.domElement);
+document.getElementById('stage').appendChild(renderer.domElement);
 
 let read, write;
 const history = [];
@@ -170,11 +170,8 @@ const material = new THREE.ShaderMaterial({
 });
 scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
 
-function resize() {
-    const stage = document.getElementById('stage');
-    // Square size is the smaller of the two stage dimensions
-    size = Math.min(stage.clientWidth, stage.clientHeight);
-    
+function setup() {
+    size = Math.min(window.innerWidth, window.innerHeight);
     renderer.setSize(size, size);
     read = new THREE.WebGLRenderTarget(size, size);
     write = new THREE.WebGLRenderTarget(size, size);
@@ -212,13 +209,8 @@ function undo() {
 
 function animate() {
     requestAnimationFrame(animate);
-    const vis = parseFloat(document.getElementById('viscositySlider').value);
-    const siz = parseFloat(document.getElementById('sizeSlider').value);
-    material.uniforms.uViscosity.value = vis;
-    material.uniforms.uBrushSize.value = siz;
-    document.getElementById('vV').innerText = vis;
-    document.getElementById('sV').innerText = siz;
-
+    material.uniforms.uViscosity.value = parseFloat(document.getElementById('viscositySlider').value);
+    material.uniforms.uBrushSize.value = parseFloat(document.getElementById('sizeSlider').value);
     renderer.setRenderTarget(write);
     renderer.render(scene, camera);
     material.uniforms.tPrev.value = write.texture;
@@ -227,6 +219,7 @@ function animate() {
     renderer.render(scene, camera);
 }
 
+// Interaction
 const getMouse = (e) => {
     const rect = renderer.domElement.getBoundingClientRect();
     const cx = e.touches ? e.touches[0].clientX : e.clientX;
@@ -241,7 +234,7 @@ const onDown = (e) => {
     material.uniforms.uMouse.value.copy(pos);
     material.uniforms.uPrevMouse.value.copy(pos);
     material.uniforms.uMode.value = activeMode;
-    material.uniforms.uColor.value.set(document.getElementById('colorPicker').value);
+    material.uniforms.uColor.value.set(activeColor);
     drawing = true;
 };
 
@@ -251,6 +244,27 @@ const onMove = (e) => {
     material.uniforms.uMouse.value.copy(getMouse(e));
 };
 
+// UI Listeners
+let drawing = false, activeMode = 0, activeColor = "#8b0000";
+
+const swatches = document.querySelectorAll('.swatch');
+swatches.forEach(sw => {
+    sw.onclick = () => {
+        swatches.forEach(s => s.classList.remove('active'));
+        sw.classList.add('active');
+        activeColor = sw.dataset.color;
+        document.getElementById('colorPicker').value = activeColor;
+    };
+});
+
+document.getElementById('colorPicker').oninput = (e) => {
+    const color = e.target.value;
+    activeColor = color;
+    const activeSwatch = document.querySelector('.swatch.active');
+    activeSwatch.style.background = color;
+    activeSwatch.dataset.color = color;
+};
+
 window.addEventListener('mousedown', onDown);
 window.addEventListener('mousemove', onMove);
 window.addEventListener('mouseup', () => { drawing = false; material.uniforms.uMode.value = -1; });
@@ -258,8 +272,7 @@ window.addEventListener('touchstart', onDown, {passive: false});
 window.addEventListener('touchmove', onMove, {passive: false});
 window.addEventListener('touchend', () => { drawing = false; material.uniforms.uMode.value = -1; });
 
-let drawing = false, activeMode = 0;
-window.addEventListener('resize', resize);
+window.addEventListener('resize', () => location.reload());
 document.getElementById('undoBtn').onclick = undo;
 document.getElementById('resetBtn').onclick = reset;
 document.getElementById('dropBtn').onclick = () => { activeMode = 0; setActive('dropBtn'); };
@@ -267,7 +280,7 @@ document.getElementById('stylusBtn').onclick = () => { activeMode = 1; setActive
 document.getElementById('rakeBtn').onclick = () => { activeMode = 2; setActive('rakeBtn'); };
 document.getElementById('saveBtn').onclick = () => {
     const link = document.createElement('a');
-    link.download = 'marbling_square.png';
+    link.download = 'marbling.png';
     link.href = renderer.domElement.toDataURL();
     link.click();
 };
@@ -276,7 +289,7 @@ function setActive(id) {
     ['dropBtn', 'stylusBtn', 'rakeBtn'].forEach(b => document.getElementById(b).classList.toggle('active', b === id));
 }
 
-resize();
+setup();
 animate();
 </script>
 </body>
