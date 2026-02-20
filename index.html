@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Master Marbling Studio - Viscosity Edition</title>
+    <title>Master Marbling Studio - Undo Edition</title>
     <style>
         body { margin: 0; overflow: hidden; background: #0a0a0a; font-family: 'Georgia', serif; touch-action: none; }
         #ui { 
@@ -18,6 +18,8 @@
         .label { font-size: 11px; font-weight: bold; color: #b39e7d; text-transform: uppercase; }
         button { cursor: pointer; padding: 10px; border: 1px solid #7a5c3e; border-radius: 4px; background: #a67c52; color: #fff; font-weight: 600; transition: 0.2s; }
         button.active { background: #ffd700; color: #3d2b1f; }
+        button#undoBtn { background: #5c4033; color: #e2d1b3; border: 1px solid #7a5c3e; }
+        button#undoBtn:disabled { opacity: 0.3; cursor: not-allowed; }
         input[type="color"] { width: 100%; height: 45px; border-radius: 4px; border: 2px solid #5c4033; background: #261a12; cursor: pointer; }
         input[type="range"] { accent-color: #ffd700; cursor: pointer; }
     </style>
@@ -30,7 +32,7 @@
         <input type="color" id="colorPicker" value="#8b0000">
     </div>
     <div class="group">
-        <span class="label">Film Viscosity (Stretch)</span>
+        <span class="label">Film Viscosity</span>
         <input type="range" id="viscositySlider" min="0.2" max="2.5" step="0.1" value="1.2">
     </div>
     <div class="group">
@@ -39,8 +41,10 @@
         <button id="stylusBtn">Needle (Stretch)</button>
         <button id="rakeBtn">Comb (Rake)</button>
     </div>
-    <button id="saveBtn" style="background: #4a6741; color: white; border: none; padding: 12px; border-radius: 4px; cursor: pointer;">Dip Paper (Export)</button>
-    <button id="resetBtn" style="background: transparent; border: 1px solid #5c4033; color: #b39e7d; padding: 5px; cursor: pointer; margin-top: 5px;">Wash Tray</button>
+    <hr style="border: 0; border-top: 1px solid #5c4033; margin: 5px 0;">
+    <button id="undoBtn">Undo Last Action</button>
+    <button id="saveBtn" style="background: #4a6741; color: white;">Dip Paper (Export)</button>
+    <button id="resetBtn" style="background: transparent; border: 1px solid #5c4033; color: #b39e7d; padding: 5px; cursor: pointer;">Wash Tray</button>
 </div>
 
 <script type="importmap">
@@ -63,7 +67,7 @@ const fragmentShader = `
         vec2 uv = vUv;
         vec3 paperColor = vec3(0.99, 0.98, 0.94);
 
-        if (uMode == 0) { // Expansion math
+        if (uMode == 0) {
             float d = distance(uv, uMouse);
             float radius = 0.05;
             if (d > 0.0001) {
@@ -74,16 +78,15 @@ const fragmentShader = `
             if(base.a < 0.1) base = vec4(paperColor, 1.0);
             gl_FragColor = (d < radius) ? vec4(uColor, 1.0) : base;
 
-        } else if (uMode > 0) { // Stretching math
+        } else if (uMode > 0) {
             vec2 mouseDir = uMouse - uPrevMouse;
             vec2 advectedUv = uv;
-            
-            if (uMode == 1) { // Needle with Viscosity
+            if (uMode == 1) {
                 float dist = distance(uv, uMouse);
                 float radius = 0.008; 
                 float influence = exp(-dist / radius);
                 advectedUv -= mouseDir * influence * uViscosity;
-            } else { // Rake
+            } else {
                 vec2 perp = vec2(-(uMouse.y-uPrevMouse.y), uMouse.x-uPrevMouse.x);
                 for(float i = -4.0; i <= 4.0; i++) {
                     vec2 needlePos = uMouse + (normalize(perp + 0.00001) * i * 0.1);
@@ -92,7 +95,6 @@ const fragmentShader = `
                     advectedUv -= mouseDir * influence * (uViscosity * 0.7);
                 }
             }
-            
             vec4 sampled = texture2D(tPrev, advectedUv);
             if(sampled.a < 0.1) sampled = vec4(paperColor, 1.0);
             gl_FragColor = sampled;
@@ -105,18 +107,21 @@ const fragmentShader = `
 `;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-renderer.autoClear = false; renderer.setPixelRatio(1);
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-const readBuffer = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, { format: THREE.RGBAFormat });
-const writeBuffer = readBuffer.clone();
+const createRT = () => new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, { format: THREE.RGBAFormat });
+let currentRead = createRT(), currentWrite = createRT();
+
+// UNDO STORAGE
+const historyStack = [];
+const MAX_HISTORY = 10;
 
 const scene = new THREE.Scene();
 const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 const material = new THREE.ShaderMaterial({
     uniforms: {
-        tPrev: { value: readBuffer.texture },
+        tPrev: { value: currentRead.texture },
         uMouse: { value: new THREE.Vector2(-1,-1) },
         uPrevMouse: { value: new THREE.Vector2(-1,-1) },
         uMode: { value: -1 },
@@ -130,7 +135,6 @@ const material = new THREE.ShaderMaterial({
 scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
 
 let drawing = false;
-let currentRead = readBuffer, currentWrite = writeBuffer;
 let activeMode = 0;
 
 function reset() {
@@ -138,8 +142,43 @@ function reset() {
     renderer.setRenderTarget(currentRead); renderer.clear();
     renderer.setRenderTarget(currentWrite); renderer.clear();
     renderer.setRenderTarget(null);
+    historyStack.length = 0;
+    updateUndoButton();
 }
 reset();
+
+function saveHistory() {
+    const historyRT = createRT();
+    renderer.setRenderTarget(historyRT);
+    renderer.render(scene, camera);
+    historyStack.push(historyRT);
+    if (historyStack.length > MAX_HISTORY) {
+        const old = historyStack.shift();
+        old.dispose();
+    }
+    updateUndoButton();
+}
+
+function undo() {
+    if (historyStack.length === 0) return;
+    const lastState = historyStack.pop();
+    
+    // Copy history back to current buffers
+    material.uniforms.uMode.value = -1;
+    material.uniforms.tPrev.value = lastState.texture;
+    
+    renderer.setRenderTarget(currentRead);
+    renderer.render(scene, camera);
+    renderer.setRenderTarget(currentWrite);
+    renderer.render(scene, camera);
+    
+    lastState.dispose();
+    updateUndoButton();
+}
+
+function updateUndoButton() {
+    document.getElementById('undoBtn').disabled = historyStack.length === 0;
+}
 
 function animate() {
     requestAnimationFrame(animate);
@@ -150,13 +189,13 @@ function animate() {
     [currentRead, currentWrite] = [currentWrite, currentRead];
     renderer.setRenderTarget(null);
     renderer.render(scene, camera);
-    if (!drawing) material.uniforms.uMode.value = -1;
 }
 
 const getMousePos = (e) => new THREE.Vector2(e.clientX/window.innerWidth, 1-(e.clientY/window.innerHeight));
 
 window.addEventListener('pointerdown', (e) => {
     if(e.target.closest('#ui')) return;
+    saveHistory(); // Save state BEFORE the new action starts
     const pos = getMousePos(e);
     material.uniforms.uMouse.value.copy(pos);
     material.uniforms.uPrevMouse.value.copy(pos);
@@ -171,17 +210,17 @@ window.addEventListener('pointermove', (e) => {
     material.uniforms.uMouse.value.copy(getMousePos(e));
 });
 
-window.addEventListener('pointerup', () => drawing = false);
+window.addEventListener('pointerup', () => {
+    drawing = false;
+    material.uniforms.uMode.value = -1;
+});
 
-document.getElementById('colorPicker').oninput = (e) => {
-    activeMode = 0; setActive('dropBtn');
-    material.uniforms.uColor.value.set(e.target.value);
-};
-
+document.getElementById('undoBtn').onclick = undo;
+document.getElementById('resetBtn').onclick = reset;
+document.getElementById('colorPicker').oninput = (e) => { activeMode = 0; setActive('dropBtn'); material.uniforms.uColor.value.set(e.target.value); };
 document.getElementById('dropBtn').onclick = () => { activeMode = 0; setActive('dropBtn'); };
 document.getElementById('stylusBtn').onclick = () => { activeMode = 1; setActive('stylusBtn'); };
 document.getElementById('rakeBtn').onclick = () => { activeMode = 2; setActive('rakeBtn'); };
-document.getElementById('resetBtn').onclick = reset;
 document.getElementById('saveBtn').onclick = () => {
     const link = document.createElement('a');
     link.download = 'marbling_art.png';
