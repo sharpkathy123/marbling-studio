@@ -2,103 +2,108 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Master Marbling - Zero Scroll</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Master Marbling - Compact</title>
     <style>
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        * { box-sizing: border-box; touch-action: none; }
         
-        /* The "Stage" is the full viewport */
+        /* Force the body to be exactly the visible height and no more */
         html, body { 
-            margin: 0; padding: 0; width: 100vw; height: 100dvh; 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
             overflow: hidden; background: #000; color: #e2d1b3;
-            font-family: system-ui, sans-serif;
-            position: fixed; /* Prevents "pull to refresh" and bounce */
+            font-family: sans-serif; position: fixed;
         }
 
-        /* Tray sits in the top area */
+        #app-wrapper {
+            display: flex; flex-direction: column;
+            width: 100%; height: 100%;
+        }
+
+        /* Tray: Forced to 50% height to ensure UI fits below it */
         #stage-area { 
-            position: absolute;
-            top: 0; left: 0; width: 100%;
-            bottom: 220px; /* Leave exactly 220px for the UI at the bottom */
+            height: 50%; width: 100%;
             display: flex; align-items: center; justify-content: center;
-            background: #0a0a0a;
+            background: #050505; flex-shrink: 0;
         }
 
-        /* UI is pinned to the bottom */
+        /* UI: Takes the remaining 50% */
         #ui-area { 
-            position: absolute;
-            bottom: 0; left: 0; width: 100%; height: 220px;
-            background: #1a110a; border-top: 1px solid #3d2b1f;
-            padding: 10px; display: flex; flex-direction: column; gap: 8px;
-            z-index: 10;
+            height: 50%; width: 100%;
+            background: #1a110a; border-top: 2px solid #3d2b1f;
+            padding: 10px; display: flex; flex-direction: column; 
+            justify-content: space-around; /* Distributes items evenly */
         }
 
-        canvas { background: #fdfaf0; touch-action: none; display: block; box-shadow: 0 0 15px rgba(0,0,0,0.5); }
+        canvas { background: #fdfaf0; display: block; border: 1px solid #3d2b1f; }
 
-        .label { font-size: 10px; font-weight: 900; color: #b39e7d; text-transform: uppercase; margin-bottom: 2px; }
-        .row { display: flex; gap: 8px; }
-        .col { flex: 1; display: flex; flex-direction: column; }
+        .ui-row { display: flex; gap: 8px; width: 100%; }
+        .ui-group { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+        
+        .label { font-size: 10px; font-weight: 900; color: #b39e7d; text-transform: uppercase; }
 
-        .palette { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
-        .swatch { height: 32px; border-radius: 4px; border: 2px solid #3d2b1f; cursor: pointer; }
-        .swatch.active { border-color: #ffd700; transform: scale(1.05); }
+        /* Compact Palette */
+        .palette { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+        .swatch { height: 25px; border-radius: 4px; border: 2px solid #3d2b1f; }
+        .swatch.active { border-color: #ffd700; outline: 1px solid #fff; }
 
+        /* Tools Grid */
+        .tool-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; }
         button { 
-            flex: 1; cursor: pointer; padding: 10px; border: 1px solid #7a5c3e; 
-            border-radius: 4px; background: #a67c52; color: #fff; font-size: 11px; font-weight: bold;
+            padding: 12px 5px; border: 1px solid #7a5c3e; border-radius: 4px; 
+            background: #a67c52; color: #fff; font-size: 10px; font-weight: bold;
         }
         button.active { background: #ffd700; color: #3d2b1f; }
-        
-        input[type="range"] { accent-color: #ffd700; width: 100%; margin: 2px 0; }
-        input[type="color"] { width: 100%; height: 24px; border: none; background: transparent; cursor: pointer; }
 
-        .footer { display: flex; gap: 5px; margin-top: auto; }
+        input[type="range"] { accent-color: #ffd700; width: 100%; height: 20px; }
+        .action-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
     </style>
 </head>
 <body>
 
-<div id="stage-area">
-    <canvas id="marblingCanvas"></canvas>
-</div>
-
-<div id="ui-area">
-    <div class="row">
-        <div class="col" style="flex: 2;">
-            <div class="label">Palette</div>
-            <div class="palette" id="palette">
-                <div class="swatch active" style="background:#8b0000" data-color="#8b0000"></div>
-                <div class="swatch" style="background:#003366" data-color="#003366"></div>
-                <div class="swatch" style="background:#ccac00" data-color="#ccac00"></div>
-                <div class="swatch" style="background:#224422" data-color="#224422"></div>
-            </div>
-        </div>
-        <div class="col">
-            <div class="label">Patterns</div>
-            <div style="display:flex; gap:4px">
-                <button id="pattTarget">Target</button>
-                <button id="pattGrid">Grid</button>
-            </div>
-        </div>
+<div id="app-wrapper">
+    <div id="stage-area">
+        <canvas id="marblingCanvas"></canvas>
     </div>
-    
-    <div class="row">
-        <div class="col">
-            <div class="label">Viscosity & Size</div>
+
+    <div id="ui-area">
+        <div class="ui-row">
+            <div class="ui-group">
+                <div class="label">Palette</div>
+                <div class="palette">
+                    <div class="swatch active" style="background:#8b0000" data-color="#8b0000"></div>
+                    <div class="swatch" style="background:#003366" data-color="#003366"></div>
+                    <div class="swatch" style="background:#ccac00" data-color="#ccac00"></div>
+                    <div class="swatch" style="background:#224422" data-color="#224422"></div>
+                </div>
+            </div>
+            <div class="ui-group">
+                <div class="label">Auto-Pattern</div>
+                <div class="action-btns">
+                    <button id="pattTarget">Bullseye</button>
+                    <button id="pattGrid">Grid</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="ui-group">
+            <div class="label">Fluid Thickness & Size</div>
             <input type="range" id="viscSlider" min="0.2" max="3.0" step="0.1" value="1.2">
             <input type="range" id="sizeSlider" min="0.1" max="4.0" step="0.1" value="1.0">
         </div>
-        <div class="col" style="flex: 0.3;">
-            <div class="label">Mix</div>
-            <input type="color" id="colorPicker" value="#8b0000">
-        </div>
-    </div>
 
-    <div class="footer">
-        <button id="btnDrop" class="active">Drop</button>
-        <button id="btnNeedle">Needle</button>
-        <button id="btnRake">Rake</button>
-        <button id="btnUndo" style="background:#3d2b1f" disabled>Undo</button>
-        <button id="btnSave" style="background:#4a6741">Save</button>
+        <div class="ui-group">
+            <div class="label">Instruments</div>
+            <div class="tool-grid">
+                <button id="btnDrop" class="active">Drop</button>
+                <button id="btnNeedle">Needle</button>
+                <button id="btnRake">Rake</button>
+            </div>
+        </div>
+
+        <div class="action-btns">
+            <button id="btnUndo" style="background:#3d2b1f">Undo</button>
+            <button id="btnSave" style="background:#4a6741">Export PNG</button>
+        </div>
     </div>
 </div>
 
@@ -175,8 +180,8 @@ scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
 
 function setup() {
     const stage = document.getElementById('stage-area');
-    // Calculate size based on current available stage (which excludes UI area)
-    traySize = Math.min(stage.clientWidth, stage.clientHeight) - 20;
+    // Using physical client dimensions for the tray
+    traySize = Math.min(stage.clientWidth, stage.clientHeight) - 10;
     
     renderer.setSize(traySize, traySize);
     read = new THREE.WebGLRenderTarget(traySize, traySize);
@@ -190,7 +195,13 @@ function reset() {
     [read, write].forEach(rt => { renderer.setRenderTarget(rt); renderer.clear(); });
     renderer.setRenderTarget(null);
     history.forEach(rt => rt.dispose()); history.length = 0;
-    document.getElementById('btnUndo').disabled = true;
+}
+
+function step() {
+    renderer.setRenderTarget(write); renderer.render(scene, camera);
+    material.uniforms.tPrev.value = write.texture;
+    [read, write] = [write, read];
+    renderer.setRenderTarget(null); renderer.render(scene, camera);
 }
 
 function applyPattern(type) {
@@ -198,15 +209,15 @@ function applyPattern(type) {
     const colors = Array.from(document.querySelectorAll('.swatch')).map(s => s.dataset.color);
     material.uniforms.uMode.value = 0;
     if(type === 'target') {
-        for(let i=0; i<10; i++) {
+        for(let i=0; i<8; i++) {
             material.uniforms.uMouse.value.set(0.5, 0.5);
             material.uniforms.uColor.value.set(colors[i % colors.length]);
-            material.uniforms.uSize.value = (10 - i) * 0.4;
+            material.uniforms.uSize.value = (8 - i) * 0.5;
             step();
         }
     } else {
-        for(let x=0.2; x<=0.8; x+=0.2) {
-            for(let y=0.2; y<=0.8; y+=0.2) {
+        for(let x=0.3; x<=0.7; x+=0.2) {
+            for(let y=0.3; y<=0.7; y+=0.2) {
                 material.uniforms.uMouse.value.set(x, y);
                 material.uniforms.uColor.value.set(colors[Math.floor(Math.random()*colors.length)]);
                 material.uniforms.uSize.value = 0.8;
@@ -217,19 +228,11 @@ function applyPattern(type) {
     material.uniforms.uMode.value = -1;
 }
 
-function step() {
-    renderer.setRenderTarget(write); renderer.render(scene, camera);
-    material.uniforms.tPrev.value = write.texture;
-    [read, write] = [write, read];
-    renderer.setRenderTarget(null); renderer.render(scene, camera);
-}
-
 function captureState() {
     const snap = new THREE.WebGLRenderTarget(traySize, traySize);
     renderer.setRenderTarget(snap); renderer.render(scene, camera);
     history.push(snap);
-    if (history.length > 8) history.shift().dispose();
-    document.getElementById('btnUndo').disabled = false;
+    if (history.length > 5) history.shift().dispose();
 }
 
 function undo() {
@@ -241,7 +244,6 @@ function undo() {
     renderer.setRenderTarget(null);
     material.uniforms.tPrev.value = read.texture;
     last.dispose();
-    document.getElementById('btnUndo').disabled = history.length === 0;
 }
 
 function animate() {
@@ -258,16 +260,8 @@ document.querySelectorAll('.swatch').forEach(sw => {
         document.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
         sw.classList.add('active');
         activeColor = sw.dataset.color;
-        document.getElementById('colorPicker').value = activeColor;
     };
 });
-
-document.getElementById('colorPicker').oninput = (e) => {
-    activeColor = e.target.value;
-    const activeSw = document.querySelector('.swatch.active');
-    activeSw.style.background = activeColor;
-    activeSw.dataset.color = activeColor;
-};
 
 const getMouse = (e) => {
     const rect = canvas.getBoundingClientRect();
@@ -276,7 +270,7 @@ const getMouse = (e) => {
     return new THREE.Vector2((cx - rect.left)/traySize, 1 - (cy - rect.top)/traySize);
 };
 
-const onDown = (e) => {
+window.addEventListener('touchstart', (e) => {
     if (e.target.closest('#ui-area')) return;
     captureState();
     const pos = getMouse(e);
@@ -285,19 +279,14 @@ const onDown = (e) => {
     material.uniforms.uMode.value = activeMode;
     material.uniforms.uColor.value.set(activeColor);
     drawing = true;
-};
+}, {passive: false});
 
-const onMove = (e) => {
+window.addEventListener('touchmove', (e) => {
     if (!drawing) return;
     material.uniforms.uPrevMouse.value.copy(material.uniforms.uMouse.value);
     material.uniforms.uMouse.value.copy(getMouse(e));
-};
+}, {passive: false});
 
-window.addEventListener('mousedown', onDown);
-window.addEventListener('mousemove', onMove);
-window.addEventListener('mouseup', () => { drawing = false; material.uniforms.uMode.value = -1; });
-window.addEventListener('touchstart', onDown, {passive: false});
-window.addEventListener('touchmove', onMove, {passive: false});
 window.addEventListener('touchend', () => { drawing = false; material.uniforms.uMode.value = -1; });
 
 window.addEventListener('resize', setup);
@@ -309,9 +298,7 @@ document.getElementById('btnNeedle').onclick = () => { activeMode = 1; setBtn('b
 document.getElementById('btnRake').onclick = () => { activeMode = 2; setBtn('btnRake'); };
 document.getElementById('btnSave').onclick = () => {
     const link = document.createElement('a');
-    link.download = 'art.png';
-    link.href = canvas.toDataURL();
-    link.click();
+    link.download = 'marbling.png'; link.href = canvas.toDataURL(); link.click();
 };
 
 function setBtn(id) {
