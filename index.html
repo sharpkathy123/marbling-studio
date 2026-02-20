@@ -2,75 +2,77 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Master Marbling Studio - Corrected Undo</title>
+    <title>Master Marbling Studio - Adaptive Layout</title>
     <style>
         body { 
-            margin: 0; 
-            background: #1a1a1a; 
-            font-family: 'Georgia', serif; 
-            display: flex; 
-            height: 100vh;
-            overflow: hidden;
+            margin: 0; background: #121212; font-family: 'Segoe UI', serif; 
+            display: flex; flex-direction: row; height: 100vh; overflow: hidden;
+            color: #e2d1b3;
         }
-        #ui { 
-            width: 300px;
-            background: linear-gradient(135deg, #3d2b1f 0%, #261a12 100%); 
-            color: #e2d1b3; 
-            padding: 20px;
-            border-right: 4px solid #5c4033;
-            box-shadow: 10px 0 30px rgba(0,0,0,0.5);
-            display: flex; 
-            flex-direction: column; 
-            gap: 15px;
-            z-index: 10;
-        }
-        #tray-container {
-            flex-grow: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #0a0a0a;
-            padding: 40px;
-            touch-action: none;
+        #stage {
+            flex-grow: 1; display: flex; align-items: center; justify-content: center;
+            background: #000; position: relative; padding: 20px;
         }
         canvas { 
-            border: 12px solid #3d2b1f;
-            box-shadow: 0 0 50px rgba(0,0,0,0.8);
-            cursor: crosshair;
+            background: #fdfaf0; border: 15px solid #3d2b1f; 
+            box-shadow: 0 0 40px rgba(0,0,0,0.7); cursor: crosshair;
+            max-width: 100%; max-height: 100%;
         }
-        .group { display: flex; flex-direction: column; gap: 6px; }
-        .label { font-size: 11px; font-weight: bold; color: #b39e7d; text-transform: uppercase; }
-        button { cursor: pointer; padding: 12px; border: 1px solid #7a5c3e; border-radius: 4px; background: #a67c52; color: #fff; font-weight: 600; }
-        button.active { background: #ffd700; color: #3d2b1f; border-color: #fff; }
-        button#undoBtn { background: #5c4033; color: #e2d1b3; }
-        button#undoBtn:disabled { opacity: 0.2; }
-        input[type="color"] { width: 100%; height: 50px; border-radius: 4px; border: 2px solid #5c4033; background: #261a12; cursor: pointer; }
+        #ui { 
+            background: #261a12; padding: 25px; border: 2px solid #5c4033;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; 
+            flex-wrap: wrap; gap: 20px; align-content: flex-start;
+            z-index: 100;
+        }
+        /* Adaptive Positioning */
+        .layout-wide #ui { width: 100%; height: auto; flex-direction: row; border-top: 4px solid #5c4033; order: 2; }
+        .layout-wide { flex-direction: column; }
+        .layout-tall #ui { width: 320px; height: 100%; flex-direction: column; border-right: 4px solid #5c4033; }
+        
+        .group { display: flex; flex-direction: column; gap: 8px; min-width: 140px; }
+        .label { font-size: 10px; font-weight: bold; color: #b39e7d; text-transform: uppercase; letter-spacing: 1px; }
+        button { cursor: pointer; padding: 10px 15px; border: 1px solid #7a5c3e; border-radius: 4px; background: #a67c52; color: #fff; font-weight: 600; transition: 0.2s; }
+        button.active { background: #ffd700; color: #3d2b1f; box-shadow: 0 0 15px rgba(255,215,0,0.3); }
+        select, input[type="range"] { background: #3d2b1f; color: #e2d1b3; border: 1px solid #5c4033; padding: 8px; border-radius: 4px; }
+        input[type="color"] { width: 100%; height: 40px; cursor: pointer; border: none; background: transparent; }
+        .row { display: flex; gap: 10px; }
     </style>
 </head>
-<body>
+<body class="layout-tall">
 
 <div id="ui">
+    <div class="group">
+        <span class="label">Tray Geometry</span>
+        <select id="sizeSelect">
+            <option value="square">Square (1:1)</option>
+            <option value="tall">Classic Portrait (3:4)</option>
+            <option value="wide" selected>Modern Wide (16:9)</option>
+        </select>
+    </div>
     <div class="group">
         <span class="label">Pigment</span>
         <input type="color" id="colorPicker" value="#8b0000">
     </div>
     <div class="group">
-        <span class="label">Film Viscosity</span>
-        <input type="range" id="viscositySlider" min="0.2" max="2.5" step="0.1" value="1.2" style="accent-color:#ffd700">
+        <span class="label">Viscosity</span>
+        <input type="range" id="viscositySlider" min="0.2" max="2.5" step="0.1" value="1.2">
     </div>
     <div class="group">
         <span class="label">Instruments</span>
-        <button id="dropBtn" class="active">Ink (Drop)</button>
-        <button id="stylusBtn">Needle (Stretch)</button>
-        <button id="rakeBtn">Comb (Rake)</button>
+        <div class="row">
+            <button id="dropBtn" class="active">Ink</button>
+            <button id="stylusBtn">Needle</button>
+            <button id="rakeBtn">Comb</button>
+        </div>
     </div>
-    <hr style="border: 0; border-top: 1px solid #5c4033;">
-    <button id="undoBtn" disabled>Undo Last Action</button>
-    <button id="saveBtn" style="background: #4a6741; color: white;">Export Result</button>
-    <button id="resetBtn" style="background: transparent; border: 1px solid #5c4033; color: #b39e7d;">Clear Tray</button>
+    <div class="group" style="margin-top:auto">
+        <button id="undoBtn" style="background:#5c4033" disabled>Undo</button>
+        <button id="saveBtn" style="background:#4a6741">Export PNG</button>
+        <button id="resetBtn" style="background:transparent; color:#b39e7d; border:1px solid #5c4033">Wash Tray</button>
+    </div>
 </div>
 
-<div id="tray-container">
+<div id="stage">
     <div id="canvas-holder"></div>
 </div>
 
@@ -126,21 +128,18 @@ const fragmentShader = `
     }
 `;
 
-const holder = document.getElementById('canvas-holder');
-const width = 800, height = 600;
+let width = 1200, height = 675; // Default 16:9
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-renderer.setSize(width, height);
-holder.appendChild(renderer.domElement);
+document.getElementById('canvas-holder').appendChild(renderer.domElement);
 
-const createRT = () => new THREE.WebGLRenderTarget(width, height, { format: THREE.RGBAFormat });
-let read = createRT(), write = createRT();
+let read, write;
 const history = [];
 
 const scene = new THREE.Scene();
 const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 const material = new THREE.ShaderMaterial({
     uniforms: {
-        tPrev: { value: read.texture },
+        tPrev: { value: null },
         uMouse: { value: new THREE.Vector2(-1,-1) },
         uPrevMouse: { value: new THREE.Vector2(-1,-1) },
         uMode: { value: -1 },
@@ -152,21 +151,32 @@ const material = new THREE.ShaderMaterial({
 });
 scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
 
-let drawing = false;
-let activeMode = 0;
+function resizeTray() {
+    const type = document.getElementById('sizeSelect').value;
+    const vh = window.innerHeight - 80;
+    const vw = window.innerWidth - 80;
+
+    if(type === 'square') { width = height = vh; document.body.className = 'layout-tall'; }
+    else if(type === 'tall') { height = vh; width = vh * 0.75; document.body.className = 'layout-tall'; }
+    else { width = vw; height = vw * (9/16); if(height > vh) { height = vh; width = vh * (16/9); } document.body.className = 'layout-wide'; }
+
+    renderer.setSize(width, height);
+    read = new THREE.WebGLRenderTarget(width, height);
+    write = new THREE.WebGLRenderTarget(width, height);
+    material.uniforms.tPrev.value = read.texture;
+    reset();
+}
 
 function reset() {
     renderer.setClearColor(0xfdfaf0, 1);
     [read, write].forEach(rt => { renderer.setRenderTarget(rt); renderer.clear(); });
     renderer.setRenderTarget(null);
-    history.forEach(rt => rt.dispose());
-    history.length = 0;
+    history.forEach(rt => rt.dispose()); history.length = 0;
     updateUndoBtn();
 }
-reset();
 
 function captureState() {
-    const snap = createRT();
+    const snap = new THREE.WebGLRenderTarget(width, height);
     renderer.setRenderTarget(snap);
     renderer.render(scene, camera);
     history.push(snap);
@@ -179,10 +189,7 @@ function undo() {
     const last = history.pop();
     material.uniforms.uMode.value = -1;
     material.uniforms.tPrev.value = last.texture;
-    [read, write].forEach(rt => {
-        renderer.setRenderTarget(rt);
-        renderer.render(scene, camera);
-    });
+    [read, write].forEach(rt => { renderer.setRenderTarget(rt); renderer.render(scene, camera); });
     renderer.setRenderTarget(null);
     material.uniforms.tPrev.value = read.texture;
     last.dispose();
@@ -212,9 +219,9 @@ renderer.domElement.addEventListener('pointerdown', (e) => {
     const pos = getMouse(e);
     material.uniforms.uMouse.value.copy(pos);
     material.uniforms.uPrevMouse.value.copy(pos);
-    drawing = true;
     material.uniforms.uMode.value = activeMode;
     material.uniforms.uColor.value.set(document.getElementById('colorPicker').value);
+    drawing = true;
 });
 
 window.addEventListener('pointermove', (e) => {
@@ -225,6 +232,9 @@ window.addEventListener('pointermove', (e) => {
 
 window.addEventListener('pointerup', () => { drawing = false; material.uniforms.uMode.value = -1; });
 
+let drawing = false;
+let activeMode = 0;
+document.getElementById('sizeSelect').onchange = resizeTray;
 document.getElementById('undoBtn').onclick = undo;
 document.getElementById('resetBtn').onclick = reset;
 document.getElementById('dropBtn').onclick = () => { activeMode = 0; setActive('dropBtn'); };
@@ -241,6 +251,7 @@ function setActive(id) {
     ['dropBtn', 'stylusBtn', 'rakeBtn'].forEach(b => document.getElementById(b).classList.toggle('active', b === id));
 }
 
+resizeTray();
 animate();
 </script>
 </body>
