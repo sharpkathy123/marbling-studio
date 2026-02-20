@@ -3,45 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Master Marbling - Tilt Studio</title>
+    <title>Master Marbling - Fixed Bounds</title>
     <style>
         * { box-sizing: border-box; }
         body { 
             margin: 0; padding: 0; background: #000; font-family: sans-serif; 
             display: flex; height: 100vh; width: 100vw; overflow: hidden; color: #e2d1b3;
         }
-        #app-container { display: flex; width: 100%; height: 100%; }
 
-        @media (orientation: portrait) {
-            #app-container { flex-direction: column; }
-            #ui { width: 100%; height: auto; border-bottom: 2px solid #3d2b1f; }
-            #stage { flex: 1; width: 100%; }
+        #app-container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
         }
 
+        /* Portrait: UI takes top slice, Tray takes rest of bottom */
+        @media (orientation: portrait) {
+            #app-container { flex-direction: column; }
+            #ui { width: 100%; height: 220px; border-bottom: 2px solid #3d2b1f; flex-shrink: 0; }
+            #stage { flex: 1; width: 100%; overflow: hidden; }
+        }
+
+        /* Landscape: UI takes left slice, Tray takes rest of right */
         @media (orientation: landscape) {
             #app-container { flex-direction: row; }
-            #ui { width: 280px; height: 100%; border-right: 2px solid #3d2b1f; }
-            #stage { flex: 1; height: 100%; }
+            #ui { width: 280px; height: 100%; border-right: 2px solid #3d2b1f; flex-shrink: 0; }
+            #stage { flex: 1; height: 100%; overflow: hidden; }
         }
 
         #ui { 
-            background: #1e140d; padding: 12px; 
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 10px; overflow-y: auto; z-index: 100;
+            background: #1e140d;
+            padding: 15px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+            gap: 10px;
+            z-index: 100;
         }
 
-        #stage { background: #0a0a0a; display: flex; align-items: center; justify-content: center; }
-        canvas { background: #fdfaf0; cursor: crosshair; touch-action: none; }
+        #stage { 
+            background: #0a0a0a; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            position: relative;
+        }
+        
+        canvas { 
+            background: #fdfaf0; 
+            touch-action: none; 
+            display: block;
+        }
 
         .group { display: flex; flex-direction: column; gap: 4px; }
         .label { font-size: 9px; font-weight: 800; color: #b39e7d; text-transform: uppercase; }
-        button { cursor: pointer; padding: 10px; border: 1px solid #7a5c3e; border-radius: 4px; background: #a67c52; color: #fff; font-size: 11px; }
+        .val { float: right; color: #ffd700; }
+        button { 
+            cursor: pointer; padding: 8px; border: 1px solid #7a5c3e; 
+            border-radius: 4px; background: #a67c52; color: #fff; font-size: 11px;
+        }
         button.active { background: #ffd700; color: #3d2b1f; }
-        input[type="range"] { accent-color: #ffd700; width: 100%; }
-        input[type="color"] { width: 100%; height: 30px; border-radius: 4px; background: #000; border: 1px solid #3d2b1f; }
-        .actions { grid-column: 1 / -1; display: flex; gap: 8px; }
+        input[type="range"] { accent-color: #ffd700; width: 100%; cursor: pointer; }
+        input[type="color"] { width: 100%; height: 30px; border-radius: 4px; background: #000; border: 1px solid #3d2b1f; cursor: pointer; }
+        .actions { grid-column: 1 / -1; display: flex; gap: 8px; margin-top: 5px; }
         .actions button { flex: 1; }
-        #tiltStatus { font-size: 8px; color: #ffd700; text-align: center; grid-column: 1/-1; }
     </style>
 </head>
 <body>
@@ -49,20 +74,20 @@
 <div id="app-container">
     <div id="ui">
         <div class="group">
-            <span class="label">Color</span>
+            <span class="label">Pigment</span>
             <input type="color" id="colorPicker" value="#8b0000">
         </div>
         <div class="group">
-            <span class="label">Viscosity</span>
+            <span class="label">Viscosity <span class="val" id="vV">1.2</span></span>
             <input type="range" id="viscositySlider" min="0.2" max="3.0" step="0.1" value="1.2">
         </div>
         <div class="group">
-            <span class="label">Tip Size</span>
+            <span class="label">Tip Size <span class="val" id="sV">1.0</span></span>
             <input type="range" id="sizeSlider" min="0.2" max="3.0" step="0.1" value="1.0">
         </div>
         <div class="group">
-            <span class="label">Instrument</span>
-            <div style="display:flex; gap:2px">
+            <span class="label">Tool</span>
+            <div style="display:flex; gap:3px">
                 <button id="dropBtn" class="active" style="flex:1">Drop</button>
                 <button id="stylusBtn" style="flex:1">Needle</button>
                 <button id="rakeBtn" style="flex:1">Rake</button>
@@ -71,10 +96,8 @@
         <div class="actions">
             <button id="undoBtn" style="background:#3d2b1f" disabled>Undo</button>
             <button id="resetBtn" style="background:transparent; color:#888; border:1px solid #3d2b1f">Clear</button>
-            <button id="saveBtn" style="background:#4a6741">Save</button>
+            <button id="saveBtn" style="background:#4a6741; border:none;">Export</button>
         </div>
-        <div id="tiltStatus">Tilt Active: Use device to drift paint</div>
-        <button id="permBtn" style="grid-column: 1/-1; font-size: 9px; padding: 4px;">Enable Motion (iOS)</button>
     </div>
 
     <div id="stage">
@@ -93,20 +116,14 @@ const fragmentShader = `
     uniform sampler2D tPrev;
     uniform vec2 uMouse;
     uniform vec2 uPrevMouse;
-    uniform vec2 uTilt;
     uniform int uMode; 
     uniform vec3 uColor;
     uniform float uViscosity;
     uniform float uBrushSize;
     varying vec2 vUv;
-
     void main() {
         vec2 uv = vUv;
         vec3 paper = vec3(0.99, 0.98, 0.94);
-        
-        // Apply Tilt Drift
-        vec2 driftUv = uv - (uTilt * 0.002);
-
         if (uMode == 0) {
             float d = distance(uv, uMouse);
             float r = 0.05 * uBrushSize;
@@ -135,7 +152,7 @@ const fragmentShader = `
             vec4 s = texture2D(tPrev, advUv);
             gl_FragColor = (s.a < 0.1) ? vec4(paper, 1.0) : s;
         } else {
-            vec4 c = texture2D(tPrev, driftUv);
+            vec4 c = texture2D(tPrev, uv);
             gl_FragColor = (c.a < 0.1) ? vec4(paper, 1.0) : c;
         }
     }
@@ -147,16 +164,15 @@ document.getElementById('canvas-holder').appendChild(renderer.domElement);
 
 let read, write;
 const history = [];
-const tiltVec = new THREE.Vector2(0, 0);
 
 const scene = new THREE.Scene();
 const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 const material = new THREE.ShaderMaterial({
     uniforms: {
         tPrev: { value: null }, uMouse: { value: new THREE.Vector2(-1,-1) },
-        uPrevMouse: { value: new THREE.Vector2(-1,-1) }, uTilt: { value: tiltVec },
-        uMode: { value: -1 }, uColor: { value: new THREE.Color() },
-        uViscosity: { value: 1.2 }, uBrushSize: { value: 1.0 }
+        uPrevMouse: { value: new THREE.Vector2(-1,-1) }, uMode: { value: -1 },
+        uColor: { value: new THREE.Color() }, uViscosity: { value: 1.2 },
+        uBrushSize: { value: 1.0 }
     },
     vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position, 1.0); }`,
     fragmentShader
@@ -165,7 +181,10 @@ scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
 
 function resize() {
     const stage = document.getElementById('stage');
-    width = stage.clientWidth; height = stage.clientHeight;
+    // Ensure canvas stays inside stage bounds
+    width = stage.clientWidth;
+    height = stage.clientHeight;
+    
     renderer.setSize(width, height);
     read = new THREE.WebGLRenderTarget(width, height);
     write = new THREE.WebGLRenderTarget(width, height);
@@ -180,25 +199,6 @@ function reset() {
     history.forEach(rt => rt.dispose()); history.length = 0;
     document.getElementById('undoBtn').disabled = true;
 }
-
-// iOS Permission Handling
-document.getElementById('permBtn').onclick = () => {
-    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-        DeviceOrientationEvent.requestPermission().then(state => {
-            if (state === 'granted') document.getElementById('permBtn').style.display = 'none';
-        });
-    }
-};
-
-window.addEventListener('deviceorientation', (e) => {
-    // Basic orientation to drift mapping
-    const isPortrait = window.innerHeight > window.innerWidth;
-    if (isPortrait) {
-        tiltVec.set(e.gamma / 45, -e.beta / 45);
-    } else {
-        tiltVec.set(e.beta / 45, e.gamma / 45);
-    }
-});
 
 function captureState() {
     const snap = new THREE.WebGLRenderTarget(width, height);
@@ -222,8 +222,13 @@ function undo() {
 
 function animate() {
     requestAnimationFrame(animate);
-    material.uniforms.uViscosity.value = parseFloat(document.getElementById('viscositySlider').value);
-    material.uniforms.uBrushSize.value = parseFloat(document.getElementById('sizeSlider').value);
+    const vis = parseFloat(document.getElementById('viscositySlider').value);
+    const siz = parseFloat(document.getElementById('sizeSlider').value);
+    material.uniforms.uViscosity.value = vis;
+    material.uniforms.uBrushSize.value = siz;
+    document.getElementById('vV').innerText = vis;
+    document.getElementById('sV').innerText = siz;
+
     renderer.setRenderTarget(write);
     renderer.render(scene, camera);
     material.uniforms.tPrev.value = write.texture;
