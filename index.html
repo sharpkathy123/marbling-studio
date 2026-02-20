@@ -3,99 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Master Marbling - Absolute Fit</title>
+    <title>Master Marbling - Safe Zone</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
-        /* Using dvh (Dynamic Viewport Height) to account for mobile bars */
         html, body { 
-            margin: 0; padding: 0; 
-            width: 100vw; height: 100dvh; 
-            overflow: hidden; background: #000; 
-            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0; padding: 0; width: 100vw; height: 100vh; 
+            overflow: hidden; background: #000; color: #e2d1b3;
+            font-family: -apple-system, system-ui, sans-serif;
         }
 
-        #app-container {
+        #app-wrapper {
             display: flex;
             width: 100vw;
-            height: 100dvh;
-            background: #120c08;
+            height: 100vh;
         }
 
-        /* Portrait: Tray top (max 70% height), UI bottom filler */
+        /* PORTRAIT: Top 60% is Tray, Bottom 40% is UI */
         @media (orientation: portrait) {
-            #app-container { flex-direction: column; }
-            #stage { 
-                width: 100vw; 
-                height: 70dvh; /* Limit tray to 70% of height max */
-                flex-shrink: 0; 
-            }
-            #ui { flex: 1; width: 100%; border-top: 2px solid #3d2b1f; }
+            #app-wrapper { flex-direction: column; }
+            #stage-area { width: 100vw; height: 60vh; }
+            #ui-area { width: 100vw; height: 40vh; border-top: 2px solid #3d2b1f; }
         }
 
-        /* Landscape: Tray left (max 70% width), UI right filler */
+        /* LANDSCAPE: Left 60% is Tray, Right 40% is UI */
         @media (orientation: landscape) {
-            #app-container { flex-direction: row; }
-            #stage { 
-                height: 100dvh; 
-                width: 70vw; /* Limit tray to 70% of width max */
-                flex-shrink: 0; 
-            }
-            #ui { flex: 1; height: 100%; border-left: 2px solid #3d2b1f; }
+            #app-wrapper { flex-direction: row; }
+            #stage-area { width: 60vw; height: 100vh; }
+            #ui-area { width: 40vw; height: 100vh; border-left: 2px solid #3d2b1f; }
         }
 
-        #stage { 
-            background: #000; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            overflow: hidden; 
+        #stage-area { 
+            background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; 
         }
 
-        #ui { 
-            background: #1e140d; 
-            padding: 10px; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 8px; 
-            overflow-y: auto; 
-            color: #e2d1b3;
+        #ui-area { 
+            background: #1a110a; padding: 15px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto;
         }
 
-        canvas { background: #fdfaf0; touch-action: none; display: block; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        canvas { background: #fdfaf0; touch-action: none; display: block; }
 
-        .label { font-size: 10px; font-weight: 800; color: #b39e7d; text-transform: uppercase; margin-bottom: 2px; }
+        .section-label { font-size: 11px; font-weight: 900; color: #b39e7d; text-transform: uppercase; letter-spacing: 0.5px; }
         
-        .palette-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
-        .swatch { height: 30px; border-radius: 4px; border: 2px solid #3d2b1f; cursor: pointer; }
-        .swatch.active { border-color: #ffd700; transform: scale(1.05); }
+        .palette { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        .swatch { height: 35px; border-radius: 6px; border: 2px solid #3d2b1f; cursor: pointer; }
+        .swatch.active { border-color: #ffd700; transform: scale(1.1); box-shadow: 0 0 10px #ffd70044; }
 
-        .control-row { display: flex; flex-direction: column; }
-        
+        .tools { display: flex; gap: 4px; }
         button { 
-            cursor: pointer; padding: 8px; border: 1px solid #7a5c3e; 
-            border-radius: 4px; background: #a67c52; color: #fff; font-size: 11px;
-            font-weight: 600;
+            flex: 1; cursor: pointer; padding: 12px; border: 1px solid #7a5c3e; 
+            border-radius: 6px; background: #a67c52; color: #fff; font-size: 12px; font-weight: bold;
         }
-        button.active { background: #ffd700; color: #3d2b1f; }
+        button.active { background: #ffd700; color: #3d2b1f; border-color: #fff; }
         
-        input[type="range"] { accent-color: #ffd700; margin: 4px 0; height: 20px; }
-        input[type="color"] { width: 100%; height: 25px; border: none; background: transparent; cursor: pointer; }
+        input[type="range"] { accent-color: #ffd700; margin: 8px 0; width: 100%; }
+        input[type="color"] { width: 100%; height: 30px; border: none; background: transparent; cursor: pointer; }
 
-        .footer { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: auto; padding-top: 5px;}
+        .bottom-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: auto; padding-top: 10px; }
     </style>
 </head>
 <body>
 
-<div id="app-container">
-    <div id="stage">
-        <canvas id="mainCanvas"></canvas>
+<div id="app-wrapper">
+    <div id="stage-area">
+        <canvas id="marblingCanvas"></canvas>
     </div>
 
-    <div id="ui">
-        <div class="control-row">
-            <span class="label">Colors</span>
-            <div class="palette-grid" id="palette">
+    <div id="ui-area">
+        <div class="group">
+            <div class="section-label">Pigment Palette</div>
+            <div class="palette" id="palette">
                 <div class="swatch active" style="background:#8b0000" data-color="#8b0000"></div>
                 <div class="swatch" style="background:#003366" data-color="#003366"></div>
                 <div class="swatch" style="background:#ccac00" data-color="#ccac00"></div>
@@ -104,26 +81,26 @@
             <input type="color" id="colorPicker" value="#8b0000">
         </div>
         
-        <div class="control-row">
-            <span class="label">Paint Viscosity</span>
-            <input type="range" id="viscositySlider" min="0.2" max="3.0" step="0.1" value="1.2">
-            <span class="label">Tool Size</span>
+        <div class="group">
+            <div class="section-label">Fluid Dynamics</div>
+            <input type="range" id="viscSlider" min="0.2" max="3.0" step="0.1" value="1.2">
+            <div class="section-label">Tool Size</div>
             <input type="range" id="sizeSlider" min="0.1" max="4.0" step="0.1" value="1.0">
         </div>
 
-        <div class="control-row">
-            <span class="label">Tools</span>
-            <div style="display:flex; gap:3px">
-                <button id="dropBtn" class="active" style="flex:1">Drop</button>
-                <button id="stylusBtn" style="flex:1">Needle</button>
-                <button id="rakeBtn" style="flex:1">Rake</button>
+        <div class="group">
+            <div class="section-label">Active Tool</div>
+            <div class="tools">
+                <button id="btnDrop" class="active">Drop</button>
+                <button id="btnNeedle">Needle</button>
+                <button id="btnRake">Rake</button>
             </div>
         </div>
 
-        <div class="footer">
-            <button id="undoBtn" style="background:#3d2b1f" disabled>Undo</button>
-            <button id="resetBtn" style="background:transparent; border:1px solid #3d2b1f">Clear</button>
-            <button id="saveBtn" style="background:#4a6741; grid-column: span 2;">Export Art</button>
+        <div class="bottom-row">
+            <button id="btnUndo" style="background:#3d2b1f" disabled>Undo</button>
+            <button id="btnClear" style="background:transparent; border:1px solid #3d2b1f">Clear</button>
+            <button id="btnSave" style="background:#4a6741; grid-column: span 2;">Export Artwork</button>
         </div>
     </div>
 </div>
@@ -141,15 +118,15 @@ const fragmentShader = `
     uniform vec2 uPrevMouse;
     uniform int uMode; 
     uniform vec3 uColor;
-    uniform float uViscosity;
-    uniform float uBrushSize;
+    uniform float uVisc;
+    uniform float uSize;
     varying vec2 vUv;
     void main() {
         vec2 uv = vUv;
         vec3 paper = vec3(0.99, 0.98, 0.94);
         if (uMode == 0) {
             float d = distance(uv, uMouse);
-            float r = 0.05 * uBrushSize;
+            float r = 0.05 * uSize;
             if (d > 0.0001) {
                 float m = sqrt(1.0 + (r*r)/(d*d));
                 uv = uMouse + (uv - uMouse)/m;
@@ -162,14 +139,14 @@ const fragmentShader = `
             vec2 advUv = uv;
             if (uMode == 1) {
                 float d = distance(uv, uMouse);
-                float inf = exp(-d / (0.008 * uBrushSize));
-                advUv -= dir * inf * uViscosity;
+                float inf = exp(-d / (0.008 * uSize));
+                advUv -= dir * inf * uVisc;
             } else {
                 vec2 perp = vec2(-(uMouse.y-uPrevMouse.y), uMouse.x-uPrevMouse.x);
-                for(float i = -4.0; i <= 4.0; i++) {
-                    vec2 nPos = uMouse + (normalize(perp + 0.00001) * i * 0.1);
-                    float inf = exp(-distance(uv, nPos) / (0.015 * uBrushSize));
-                    advUv -= dir * inf * (uViscosity * 0.7);
+                for(float i = -3.0; i <= 3.0; i++) {
+                    vec2 nPos = uMouse + (normalize(perp + 0.00001) * i * 0.12);
+                    float inf = exp(-distance(uv, nPos) / (0.015 * uSize));
+                    advUv -= dir * inf * (uVisc * 0.7);
                 }
             }
             vec4 s = texture2D(tPrev, advUv);
@@ -181,8 +158,8 @@ const fragmentShader = `
     }
 `;
 
-let canvasSize;
-const canvas = document.getElementById('mainCanvas');
+let traySize;
+const canvas = document.getElementById('marblingCanvas');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
 
 let read, write;
@@ -194,22 +171,21 @@ const material = new THREE.ShaderMaterial({
     uniforms: {
         tPrev: { value: null }, uMouse: { value: new THREE.Vector2(-1,-1) },
         uPrevMouse: { value: new THREE.Vector2(-1,-1) }, uMode: { value: -1 },
-        uColor: { value: new THREE.Color() }, uViscosity: { value: 1.2 },
-        uBrushSize: { value: 1.0 }
+        uColor: { value: new THREE.Color() }, uVisc: { value: 1.2 }, uSize: { value: 1.0 }
     },
     vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position, 1.0); }`,
     fragmentShader
 });
 scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
 
-function init() {
-    const stage = document.getElementById('stage');
-    // Force tray to be a square that fits within its assigned stage area
-    canvasSize = Math.min(stage.clientWidth, stage.clientHeight);
+function setup() {
+    const stage = document.getElementById('stage-area');
+    // Canvas is strictly the smallest dimension of its 60% partition
+    traySize = Math.min(stage.clientWidth, stage.clientHeight);
     
-    renderer.setSize(canvasSize, canvasSize);
-    read = new THREE.WebGLRenderTarget(canvasSize, canvasSize);
-    write = new THREE.WebGLRenderTarget(canvasSize, canvasSize);
+    renderer.setSize(traySize, traySize);
+    read = new THREE.WebGLRenderTarget(traySize, traySize);
+    write = new THREE.WebGLRenderTarget(traySize, traySize);
     material.uniforms.tPrev.value = read.texture;
     reset();
 }
@@ -219,15 +195,15 @@ function reset() {
     [read, write].forEach(rt => { renderer.setRenderTarget(rt); renderer.clear(); });
     renderer.setRenderTarget(null);
     history.forEach(rt => rt.dispose()); history.length = 0;
-    document.getElementById('undoBtn').disabled = true;
+    document.getElementById('btnUndo').disabled = true;
 }
 
 function captureState() {
-    const snap = new THREE.WebGLRenderTarget(canvasSize, canvasSize);
+    const snap = new THREE.WebGLRenderTarget(traySize, traySize);
     renderer.setRenderTarget(snap); renderer.render(scene, camera);
     history.push(snap);
-    if (history.length > 15) history.shift().dispose();
-    document.getElementById('undoBtn').disabled = false;
+    if (history.length > 10) history.shift().dispose();
+    document.getElementById('btnUndo').disabled = false;
 }
 
 function undo() {
@@ -239,13 +215,13 @@ function undo() {
     renderer.setRenderTarget(null);
     material.uniforms.tPrev.value = read.texture;
     last.dispose();
-    document.getElementById('undoBtn').disabled = history.length === 0;
+    document.getElementById('btnUndo').disabled = history.length === 0;
 }
 
 function animate() {
     requestAnimationFrame(animate);
-    material.uniforms.uViscosity.value = parseFloat(document.getElementById('viscositySlider').value);
-    material.uniforms.uBrushSize.value = parseFloat(document.getElementById('sizeSlider').value);
+    material.uniforms.uVisc.value = parseFloat(document.getElementById('viscSlider').value);
+    material.uniforms.uSize.value = parseFloat(document.getElementById('sizeSlider').value);
     renderer.setRenderTarget(write);
     renderer.render(scene, camera);
     material.uniforms.tPrev.value = write.texture;
@@ -279,11 +255,11 @@ const getMouse = (e) => {
     const rect = canvas.getBoundingClientRect();
     const cx = e.touches ? e.touches[0].clientX : e.clientX;
     const cy = e.touches ? e.touches[0].clientY : e.clientY;
-    return new THREE.Vector2((cx - rect.left)/canvasSize, 1 - (cy - rect.top)/canvasSize);
+    return new THREE.Vector2((cx - rect.left)/traySize, 1 - (cy - rect.top)/traySize);
 };
 
 const onDown = (e) => {
-    if (e.target.closest('#ui')) return;
+    if (e.target.closest('#ui-area')) return;
     captureState();
     const pos = getMouse(e);
     material.uniforms.uMouse.value.copy(pos);
@@ -307,23 +283,23 @@ window.addEventListener('touchmove', onMove, {passive: false});
 window.addEventListener('touchend', () => { drawing = false; material.uniforms.uMode.value = -1; });
 
 window.addEventListener('resize', () => location.reload());
-document.getElementById('undoBtn').onclick = undo;
-document.getElementById('resetBtn').onclick = reset;
-document.getElementById('dropBtn').onclick = () => { activeMode = 0; setActive('dropBtn'); };
-document.getElementById('stylusBtn').onclick = () => { activeMode = 1; setActive('stylusBtn'); };
-document.getElementById('rakeBtn').onclick = () => { activeMode = 2; setActive('rakeBtn'); };
-document.getElementById('saveBtn').onclick = () => {
+document.getElementById('btnUndo').onclick = undo;
+document.getElementById('btnClear').onclick = reset;
+document.getElementById('btnDrop').onclick = () => { activeMode = 0; setBtn('btnDrop'); };
+document.getElementById('btnNeedle').onclick = () => { activeMode = 1; setBtn('btnNeedle'); };
+document.getElementById('btnRake').onclick = () => { activeMode = 2; setBtn('btnRake'); };
+document.getElementById('btnSave').onclick = () => {
     const link = document.createElement('a');
     link.download = 'marbling.png';
     link.href = canvas.toDataURL();
     link.click();
 };
 
-function setActive(id) {
-    ['dropBtn', 'stylusBtn', 'rakeBtn'].forEach(b => document.getElementById(b).classList.toggle('active', b === id));
+function setBtn(id) {
+    ['btnDrop', 'btnNeedle', 'btnRake'].forEach(b => document.getElementById(b).classList.toggle('active', b === id));
 }
 
-init();
+setup();
 animate();
 </script>
 </body>
