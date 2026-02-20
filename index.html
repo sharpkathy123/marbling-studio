@@ -2,35 +2,45 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Master Marbling - Visible Layout</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Master Marbling - Absolute Fit</title>
     <style>
-        * { box-sizing: border-box; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
-        /* Locking the body to the viewport to prevent all scrolling */
+        /* Using dvh (Dynamic Viewport Height) to account for mobile bars */
         html, body { 
-            margin: 0; padding: 0; width: 100%; height: 100%; 
-            overflow: hidden; background: #000; font-family: sans-serif;
+            margin: 0; padding: 0; 
+            width: 100vw; height: 100dvh; 
+            overflow: hidden; background: #000; 
+            font-family: system-ui, -apple-system, sans-serif;
         }
 
         #app-container {
             display: flex;
             width: 100vw;
-            height: 100vh;
+            height: 100dvh;
             background: #120c08;
         }
 
-        /* Portrait: Tray top, UI bottom */
+        /* Portrait: Tray top (max 70% height), UI bottom filler */
         @media (orientation: portrait) {
             #app-container { flex-direction: column; }
-            #stage { width: 100vw; height: 100vw; flex-shrink: 0; }
+            #stage { 
+                width: 100vw; 
+                height: 70dvh; /* Limit tray to 70% of height max */
+                flex-shrink: 0; 
+            }
             #ui { flex: 1; width: 100%; border-top: 2px solid #3d2b1f; }
         }
 
-        /* Landscape: Tray left, UI right */
+        /* Landscape: Tray left (max 70% width), UI right filler */
         @media (orientation: landscape) {
             #app-container { flex-direction: row; }
-            #stage { height: 100vh; width: 100vh; flex-shrink: 0; }
+            #stage { 
+                height: 100dvh; 
+                width: 70vw; /* Limit tray to 70% of width max */
+                flex-shrink: 0; 
+            }
             #ui { flex: 1; height: 100%; border-left: 2px solid #3d2b1f; }
         }
 
@@ -44,38 +54,35 @@
 
         #ui { 
             background: #1e140d; 
-            padding: 12px; 
+            padding: 10px; 
             display: flex; 
             flex-direction: column; 
-            gap: 10px; 
-            overflow-y: auto; /* Safety for small screens */
+            gap: 8px; 
+            overflow-y: auto; 
             color: #e2d1b3;
         }
 
-        canvas { background: #fdfaf0; touch-action: none; display: block; }
+        canvas { background: #fdfaf0; touch-action: none; display: block; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
 
-        .label { font-size: 10px; font-weight: 800; color: #b39e7d; text-transform: uppercase; margin-bottom: 4px; }
+        .label { font-size: 10px; font-weight: 800; color: #b39e7d; text-transform: uppercase; margin-bottom: 2px; }
         
-        /* Palette */
-        .palette-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-        .swatch { 
-            height: 34px; border-radius: 4px; border: 2px solid #3d2b1f; 
-            cursor: pointer; 
-        }
+        .palette-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+        .swatch { height: 30px; border-radius: 4px; border: 2px solid #3d2b1f; cursor: pointer; }
         .swatch.active { border-color: #ffd700; transform: scale(1.05); }
 
-        .control-row { display: flex; flex-direction: column; gap: 2px; }
+        .control-row { display: flex; flex-direction: column; }
         
         button { 
             cursor: pointer; padding: 8px; border: 1px solid #7a5c3e; 
             border-radius: 4px; background: #a67c52; color: #fff; font-size: 11px;
+            font-weight: 600;
         }
-        button.active { background: #ffd700; color: #3d2b1f; font-weight: bold; }
+        button.active { background: #ffd700; color: #3d2b1f; }
         
-        input[type="range"] { accent-color: #ffd700; margin: 5px 0; }
-        input[type="color"] { width: 100%; height: 30px; border: none; background: transparent; cursor: pointer; }
+        input[type="range"] { accent-color: #ffd700; margin: 4px 0; height: 20px; }
+        input[type="color"] { width: 100%; height: 25px; border: none; background: transparent; cursor: pointer; }
 
-        .footer { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: auto; }
+        .footer { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: auto; padding-top: 5px;}
     </style>
 </head>
 <body>
@@ -87,7 +94,7 @@
 
     <div id="ui">
         <div class="control-row">
-            <span class="label">Palette</span>
+            <span class="label">Colors</span>
             <div class="palette-grid" id="palette">
                 <div class="swatch active" style="background:#8b0000" data-color="#8b0000"></div>
                 <div class="swatch" style="background:#003366" data-color="#003366"></div>
@@ -98,8 +105,9 @@
         </div>
         
         <div class="control-row">
-            <span class="label">Viscosity / Size</span>
+            <span class="label">Paint Viscosity</span>
             <input type="range" id="viscositySlider" min="0.2" max="3.0" step="0.1" value="1.2">
+            <span class="label">Tool Size</span>
             <input type="range" id="sizeSlider" min="0.1" max="4.0" step="0.1" value="1.0">
         </div>
 
@@ -115,7 +123,7 @@
         <div class="footer">
             <button id="undoBtn" style="background:#3d2b1f" disabled>Undo</button>
             <button id="resetBtn" style="background:transparent; border:1px solid #3d2b1f">Clear</button>
-            <button id="saveBtn" style="background:#4a6741; grid-column: span 2;">Export Artwork</button>
+            <button id="saveBtn" style="background:#4a6741; grid-column: span 2;">Export Art</button>
         </div>
     </div>
 </div>
@@ -195,8 +203,8 @@ const material = new THREE.ShaderMaterial({
 scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
 
 function init() {
-    // Re-calculate based on current viewport
     const stage = document.getElementById('stage');
+    // Force tray to be a square that fits within its assigned stage area
     canvasSize = Math.min(stage.clientWidth, stage.clientHeight);
     
     renderer.setSize(canvasSize, canvasSize);
@@ -246,7 +254,6 @@ function animate() {
     renderer.render(scene, camera);
 }
 
-// Controls Logic
 let activeColor = "#8b0000";
 let activeMode = 0;
 let drawing = false;
