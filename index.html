@@ -3,100 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Master Marbling - Patterns</title>
+    <title>Master Marbling - Zero Scroll</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        html, body { 
-            margin: 0; padding: 0; width: 100%; height: 100%; 
-            overflow: hidden; background: #000; color: #e2d1b3;
-            font-family: -apple-system, system-ui, sans-serif;
-        }
-
-        #app-wrapper { display: flex; flex-direction: column; width: 100vw; height: 100vh; }
-
-        #stage-area { 
-            background: #050505; display: flex; align-items: center; justify-content: center; 
-            flex: 1; overflow: hidden;
-        }
-
-        #ui-area { 
-            background: #1a110a; width: 100%; border-top: 1px solid #3d2b1f;
-            display: flex; flex-direction: column; padding: 8px; gap: 6px;
-            flex-shrink: 0;
-        }
-
-        canvas { background: #fdfaf0; touch-action: none; display: block; }
-
-        .label { font-size: 9px; font-weight: 900; color: #b39e7d; text-transform: uppercase; margin-bottom: 2px; }
         
-        .row { display: flex; gap: 5px; align-items: flex-end; }
+        /* The "Stage" is the full viewport */
+        html, body { 
+            margin: 0; padding: 0; width: 100vw; height: 100dvh; 
+            overflow: hidden; background: #000; color: #e2d1b3;
+            font-family: system-ui, sans-serif;
+            position: fixed; /* Prevents "pull to refresh" and bounce */
+        }
+
+        /* Tray sits in the top area */
+        #stage-area { 
+            position: absolute;
+            top: 0; left: 0; width: 100%;
+            bottom: 220px; /* Leave exactly 220px for the UI at the bottom */
+            display: flex; align-items: center; justify-content: center;
+            background: #0a0a0a;
+        }
+
+        /* UI is pinned to the bottom */
+        #ui-area { 
+            position: absolute;
+            bottom: 0; left: 0; width: 100%; height: 220px;
+            background: #1a110a; border-top: 1px solid #3d2b1f;
+            padding: 10px; display: flex; flex-direction: column; gap: 8px;
+            z-index: 10;
+        }
+
+        canvas { background: #fdfaf0; touch-action: none; display: block; box-shadow: 0 0 15px rgba(0,0,0,0.5); }
+
+        .label { font-size: 10px; font-weight: 900; color: #b39e7d; text-transform: uppercase; margin-bottom: 2px; }
+        .row { display: flex; gap: 8px; }
         .col { flex: 1; display: flex; flex-direction: column; }
 
-        .palette { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
-        .swatch { height: 28px; border-radius: 4px; border: 2px solid #3d2b1f; cursor: pointer; }
-        .swatch.active { border-color: #ffd700; }
+        .palette { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+        .swatch { height: 32px; border-radius: 4px; border: 2px solid #3d2b1f; cursor: pointer; }
+        .swatch.active { border-color: #ffd700; transform: scale(1.05); }
 
         button { 
-            cursor: pointer; padding: 8px; border: 1px solid #7a5c3e; 
-            border-radius: 4px; background: #a67c52; color: #fff; font-size: 10px; font-weight: bold;
+            flex: 1; cursor: pointer; padding: 10px; border: 1px solid #7a5c3e; 
+            border-radius: 4px; background: #a67c52; color: #fff; font-size: 11px; font-weight: bold;
         }
         button.active { background: #ffd700; color: #3d2b1f; }
         
-        .pattern-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
-        
-        input[type="range"] { accent-color: #ffd700; margin: 2px 0; width: 100%; }
-        input[type="color"] { width: 100%; height: 20px; border: none; background: transparent; cursor: pointer; }
+        input[type="range"] { accent-color: #ffd700; width: 100%; margin: 2px 0; }
+        input[type="color"] { width: 100%; height: 24px; border: none; background: transparent; cursor: pointer; }
 
-        .footer { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; }
+        .footer { display: flex; gap: 5px; margin-top: auto; }
     </style>
 </head>
 <body>
 
-<div id="app-wrapper">
-    <div id="stage-area">
-        <canvas id="marblingCanvas"></canvas>
+<div id="stage-area">
+    <canvas id="marblingCanvas"></canvas>
+</div>
+
+<div id="ui-area">
+    <div class="row">
+        <div class="col" style="flex: 2;">
+            <div class="label">Palette</div>
+            <div class="palette" id="palette">
+                <div class="swatch active" style="background:#8b0000" data-color="#8b0000"></div>
+                <div class="swatch" style="background:#003366" data-color="#003366"></div>
+                <div class="swatch" style="background:#ccac00" data-color="#ccac00"></div>
+                <div class="swatch" style="background:#224422" data-color="#224422"></div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="label">Patterns</div>
+            <div style="display:flex; gap:4px">
+                <button id="pattTarget">Target</button>
+                <button id="pattGrid">Grid</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col">
+            <div class="label">Viscosity & Size</div>
+            <input type="range" id="viscSlider" min="0.2" max="3.0" step="0.1" value="1.2">
+            <input type="range" id="sizeSlider" min="0.1" max="4.0" step="0.1" value="1.0">
+        </div>
+        <div class="col" style="flex: 0.3;">
+            <div class="label">Mix</div>
+            <input type="color" id="colorPicker" value="#8b0000">
+        </div>
     </div>
 
-    <div id="ui-area">
-        <div class="row">
-            <div class="col" style="flex: 1.5;">
-                <div class="label">Palette</div>
-                <div class="palette" id="palette">
-                    <div class="swatch active" style="background:#8b0000" data-color="#8b0000"></div>
-                    <div class="swatch" style="background:#003366" data-color="#003366"></div>
-                    <div class="swatch" style="background:#ccac00" data-color="#ccac00"></div>
-                    <div class="swatch" style="background:#224422" data-color="#224422"></div>
-                </div>
-            </div>
-            <div class="col">
-                <div class="label">Seed Patterns</div>
-                <div class="pattern-btns">
-                    <button id="pattTarget">Target</button>
-                    <button id="pattGrid">Grid</button>
-                </div>
-            </div>
-        </div>
-        
-        <div class="row">
-            <div class="col">
-                <div class="label">Viscosity / Size</div>
-                <input type="range" id="viscSlider" min="0.2" max="3.0" step="0.1" value="1.2">
-                <input type="range" id="sizeSlider" min="0.1" max="4.0" step="0.1" value="1.0">
-            </div>
-            <div class="col" style="flex: 0.5;">
-                <div class="label">Color</div>
-                <input type="color" id="colorPicker" value="#8b0000">
-            </div>
-        </div>
-
-        <div class="footer">
-            <button id="btnDrop" class="active">Drop</button>
-            <button id="btnNeedle">Needle</button>
-            <button id="btnRake">Rake</button>
-            <button id="btnUndo" style="background:#3d2b1f" disabled>Undo</button>
-            <button id="btnClear" style="background:#5c2d2d">Reset</button>
-            <button id="btnSave" style="background:#4a6741">Save</button>
-        </div>
+    <div class="footer">
+        <button id="btnDrop" class="active">Drop</button>
+        <button id="btnNeedle">Needle</button>
+        <button id="btnRake">Rake</button>
+        <button id="btnUndo" style="background:#3d2b1f" disabled>Undo</button>
+        <button id="btnSave" style="background:#4a6741">Save</button>
     </div>
 </div>
 
@@ -173,11 +175,8 @@ scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
 
 function setup() {
     const stage = document.getElementById('stage-area');
-    const ui = document.getElementById('ui-area');
-    
-    // Safety check for mobile browsers that misreport height
-    const availableH = window.innerHeight - ui.offsetHeight;
-    traySize = Math.min(window.innerWidth, availableH) - 20;
+    // Calculate size based on current available stage (which excludes UI area)
+    traySize = Math.min(stage.clientWidth, stage.clientHeight) - 20;
     
     renderer.setSize(traySize, traySize);
     read = new THREE.WebGLRenderTarget(traySize, traySize);
@@ -198,7 +197,6 @@ function applyPattern(type) {
     captureState();
     const colors = Array.from(document.querySelectorAll('.swatch')).map(s => s.dataset.color);
     material.uniforms.uMode.value = 0;
-    
     if(type === 'target') {
         for(let i=0; i<10; i++) {
             material.uniforms.uMouse.value.set(0.5, 0.5);
@@ -206,7 +204,7 @@ function applyPattern(type) {
             material.uniforms.uSize.value = (10 - i) * 0.4;
             step();
         }
-    } else if (type === 'grid') {
+    } else {
         for(let x=0.2; x<=0.8; x+=0.2) {
             for(let y=0.2; y<=0.8; y+=0.2) {
                 material.uniforms.uMouse.value.set(x, y);
@@ -253,14 +251,11 @@ function animate() {
     if (material.uniforms.uMode.value !== -1) step();
 }
 
-let activeColor = "#8b0000";
-let activeMode = 0;
-let drawing = false;
+let activeColor = "#8b0000", activeMode = 0, drawing = false;
 
-const swatches = document.querySelectorAll('.swatch');
-swatches.forEach(sw => {
+document.querySelectorAll('.swatch').forEach(sw => {
     sw.onclick = () => {
-        swatches.forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
         sw.classList.add('active');
         activeColor = sw.dataset.color;
         document.getElementById('colorPicker').value = activeColor;
@@ -305,9 +300,8 @@ window.addEventListener('touchstart', onDown, {passive: false});
 window.addEventListener('touchmove', onMove, {passive: false});
 window.addEventListener('touchend', () => { drawing = false; material.uniforms.uMode.value = -1; });
 
-window.addEventListener('resize', () => setup());
+window.addEventListener('resize', setup);
 document.getElementById('btnUndo').onclick = undo;
-document.getElementById('btnClear').onclick = reset;
 document.getElementById('pattTarget').onclick = () => applyPattern('target');
 document.getElementById('pattGrid').onclick = () => applyPattern('grid');
 document.getElementById('btnDrop').onclick = () => { activeMode = 0; setBtn('btnDrop'); };
@@ -315,7 +309,7 @@ document.getElementById('btnNeedle').onclick = () => { activeMode = 1; setBtn('b
 document.getElementById('btnRake').onclick = () => { activeMode = 2; setBtn('btnRake'); };
 document.getElementById('btnSave').onclick = () => {
     const link = document.createElement('a');
-    link.download = 'marbling.png';
+    link.download = 'art.png';
     link.href = canvas.toDataURL();
     link.click();
 };
