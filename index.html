@@ -3,68 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Marbling Fix</title>
+    <title>Marbling Ultra-Fix</title>
     <style>
-        /* Force zero margins and no scrolling on everything */
+        /* The nuclear option for layout: everything is based on Viewport units */
         * { box-sizing: border-box; margin: 0; padding: 0; touch-action: none; }
         
         html, body { 
-            width: 100vw; height: 100vh; height: 100dvh; 
+            width: 100vw; height: 100dvh; 
             overflow: hidden; background: #000; position: fixed;
             font-family: sans-serif;
         }
 
-        #wrapper {
+        #app {
             display: flex; flex-direction: column;
-            width: 100vw; height: 100%;
+            width: 100vw; height: 100dvh;
         }
 
-        /* Top 40% for the Tray */
-        #stage {
-            flex: 0 0 40%; width: 100%;
+        /* Tray: Locked to top 35% of the screen */
+        #tray-zone {
+            width: 100vw; height: 35dvh;
             display: flex; align-items: center; justify-content: center;
-            background: #111;
+            background: #000; border-bottom: 2px solid #3d2b1f;
         }
 
-        /* Bottom 60% for the UI */
-        #ui {
-            flex: 0 0 60%; width: 100%;
-            background: #1a110a; border-top: 2px solid #3d2b1f;
-            display: flex; flex-direction: column; padding: 10px; gap: 8px;
+        /* UI: Locked to 65% of the screen */
+        #ui-zone {
+            width: 100vw; height: 65dvh;
+            background: #1a110a; color: #e2d1b3;
+            padding: 4vw; display: flex; flex-direction: column; gap: 3vh;
         }
 
         canvas { background: #fdfaf0; display: block; }
 
-        /* Grid to prevent horizontal overflow */
-        .row { display: flex; gap: 5px; width: 100%; }
-        .col { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+        .section { width: 100%; display: flex; flex-direction: column; gap: 1vh; }
+        .label { font-size: 3.5vw; font-weight: bold; color: #b39e7d; text-transform: uppercase; }
 
-        .swatch-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
-        .swatch { height: 30px; border: 2px solid #3d2b1f; border-radius: 4px; }
-        .swatch.active { border-color: #ffd700; }
+        /* Palette: 4 circles perfectly spaced */
+        .palette { display: flex; justify-content: space-between; width: 100%; }
+        .swatch { width: 18vw; height: 18vw; border-radius: 50%; border: 1vw solid #3d2b1f; }
+        .swatch.active { border-color: #ffd700; transform: scale(1.1); }
 
+        /* Buttons: Scaled to width */
+        .btn-row { display: flex; gap: 2vw; width: 100%; }
         button { 
-            width: 100%; padding: 12px 0; border: 1px solid #7a5c3e; 
-            border-radius: 4px; background: #a67c52; color: #fff; 
-            font-size: 11px; font-weight: bold;
+            flex: 1; height: 12vw; border: none; border-radius: 2vw; 
+            background: #a67c52; color: #fff; font-size: 3.5vw; font-weight: bold;
         }
         button.active { background: #ffd700; color: #000; }
 
-        input[type="range"] { width: 100%; accent-color: #ffd700; }
-        .label { font-size: 10px; color: #b39e7d; font-weight: bold; text-transform: uppercase; }
+        input[type="range"] { width: 100%; height: 8vw; accent-color: #ffd700; }
     </style>
 </head>
 <body>
 
-<div id="wrapper">
-    <div id="stage">
-        <canvas id="mainCanvas"></canvas>
+<div id="app">
+    <div id="tray-zone">
+        <canvas id="mCanvas"></canvas>
     </div>
 
-    <div id="ui">
-        <div class="col">
-            <div class="label">Colors</div>
-            <div class="swatch-row">
+    <div id="ui-zone">
+        <div class="section">
+            <div class="label">Pigment Select</div>
+            <div class="palette">
                 <div class="swatch active" style="background:#8b0000" data-color="#8b0000"></div>
                 <div class="swatch" style="background:#003366" data-color="#003366"></div>
                 <div class="swatch" style="background:#ccac00" data-color="#ccac00"></div>
@@ -72,27 +72,24 @@
             </div>
         </div>
 
-        <div class="row">
-            <div class="col">
-                <div class="label">Flow</div>
-                <input type="range" id="visc" min="0.2" max="3.0" step="0.1" value="1.2">
-            </div>
-            <div class="col">
-                <div class="label">Size</div>
-                <input type="range" id="size" min="0.1" max="4.0" step="0.1" value="1.0">
+        <div class="section">
+            <div class="label">Dynamics (Flow & Size)</div>
+            <input type="range" id="visc" min="0.2" max="3.0" step="0.1" value="1.2">
+            <input type="range" id="size" min="0.1" max="4.0" step="0.1" value="1.0">
+        </div>
+
+        <div class="section">
+            <div class="label">Tools</div>
+            <div class="btn-row">
+                <button id="btnDrop" class="active">Drop</button>
+                <button id="btnNeedle">Needle</button>
+                <button id="btnRake">Rake</button>
             </div>
         </div>
 
-        <div class="label">Tools</div>
-        <div class="row">
-            <button id="btnDrop" class="active">Drop</button>
-            <button id="btnNeedle">Needle</button>
-            <button id="btnRake">Rake</button>
-        </div>
-
-        <div class="row" style="margin-top: auto;">
-            <button id="btnUndo" style="background:#333">Undo</button>
-            <button id="btnSave" style="background:#2a4d2a">Save PNG</button>
+        <div class="btn-row" style="margin-top: auto;">
+            <button id="btnSave" style="background:#4a6741">Export Art</button>
+            <button id="btnReset" style="background:#5c2d2d">Reset Tray</button>
         </div>
     </div>
 </div>
@@ -101,7 +98,6 @@
 <script type="module">
 import * as THREE from 'three';
 
-// Shader logic
 const fragmentShader = `
     uniform sampler2D tPrev; uniform vec2 uMouse; uniform vec2 uPrevMouse;
     uniform int uMode; uniform vec3 uColor; uniform float uVisc; uniform float uSize;
@@ -133,10 +129,9 @@ const fragmentShader = `
     }
 `;
 
-const canvas = document.getElementById('mainCanvas');
+const canvas = document.getElementById('mCanvas');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
-let traySize, read, write;
-
+let tSize, read, write;
 const scene = new THREE.Scene(), camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 const material = new THREE.ShaderMaterial({
     uniforms: { tPrev: { value: null }, uMouse: { value: new THREE.Vector2(-1,-1) }, uPrevMouse: { value: new THREE.Vector2(-1,-1) }, uMode: { value: -1 }, uColor: { value: new THREE.Color() }, uVisc: { value: 1.2 }, uSize: { value: 1.0 } },
@@ -146,12 +141,11 @@ const material = new THREE.ShaderMaterial({
 scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
 
 function init() {
-    const stage = document.getElementById('stage');
-    // Force tray to fit in the 40% height box
-    traySize = Math.min(stage.clientWidth, stage.clientHeight) - 10;
-    renderer.setSize(traySize, traySize);
-    read = new THREE.WebGLRenderTarget(traySize, traySize);
-    write = new THREE.WebGLRenderTarget(traySize, traySize);
+    const zone = document.getElementById('tray-zone');
+    tSize = Math.min(zone.clientWidth, zone.clientHeight) - 10;
+    renderer.setSize(tSize, tSize);
+    read = new THREE.WebGLRenderTarget(tSize, tSize);
+    write = new THREE.WebGLRenderTarget(tSize, tSize);
     material.uniforms.tPrev.value = read.texture;
     renderer.setClearColor(0xfdfaf0, 1);
     [read, write].forEach(rt => { renderer.setRenderTarget(rt); renderer.clear(); });
@@ -177,11 +171,11 @@ const getMouse = (e) => {
     const rect = canvas.getBoundingClientRect();
     const cx = e.touches ? e.touches[0].clientX : e.clientX;
     const cy = e.touches ? e.touches[0].clientY : e.clientY;
-    return new THREE.Vector2((cx - rect.left)/traySize, 1 - (cy - rect.top)/traySize);
+    return new THREE.Vector2((cx - rect.left)/tSize, 1 - (cy - rect.top)/tSize);
 };
 
 window.addEventListener('touchstart', (e) => {
-    if (e.target.closest('#ui')) return;
+    if (e.target.closest('#ui-zone')) return;
     const pos = getMouse(e);
     material.uniforms.uMouse.value.copy(pos); material.uniforms.uPrevMouse.value.copy(pos);
     material.uniforms.uMode.value = activeMode; material.uniforms.uColor.value.set(activeColor);
@@ -203,15 +197,17 @@ document.querySelectorAll('.swatch').forEach(sw => {
     };
 });
 
-document.getElementById('btnDrop').onclick = () => { activeMode = 0; updateBtns('btnDrop'); };
-document.getElementById('btnNeedle').onclick = () => { activeMode = 1; updateBtns('btnNeedle'); };
-document.getElementById('btnRake').onclick = () => { activeMode = 2; updateBtns('btnRake'); };
+document.getElementById('btnDrop').onclick = () => { activeMode = 0; upd(0); };
+document.getElementById('btnNeedle').onclick = () => { activeMode = 1; upd(1); };
+document.getElementById('btnRake').onclick = () => { activeMode = 2; upd(2); };
+document.getElementById('btnReset').onclick = () => init();
 document.getElementById('btnSave').onclick = () => {
     const link = document.createElement('a'); link.download = 'art.png'; link.href = canvas.toDataURL(); link.click();
 };
 
-function updateBtns(id) {
-    ['btnDrop', 'btnNeedle', 'btnRake'].forEach(b => document.getElementById(b).classList.toggle('active', b === id));
+function upd(m) {
+    const ids = ['btnDrop', 'btnNeedle', 'btnRake'];
+    ids.forEach((id, i) => document.getElementById(id).classList.toggle('active', i === m));
 }
 
 window.addEventListener('resize', init);
