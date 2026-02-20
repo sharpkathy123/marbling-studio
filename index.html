@@ -2,78 +2,88 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Master Marbling Studio - Adaptive Layout</title>
+    <title>Master Marbling Studio - Max Tray Edition</title>
     <style>
         body { 
-            margin: 0; background: #121212; font-family: 'Segoe UI', serif; 
-            display: flex; flex-direction: row; height: 100vh; overflow: hidden;
-            color: #e2d1b3;
+            margin: 0; background: #0e0e0e; font-family: 'Segoe UI', system-ui, sans-serif; 
+            display: flex; height: 100vh; width: 100vw; overflow: hidden; color: #e2d1b3;
         }
         #stage {
             flex-grow: 1; display: flex; align-items: center; justify-content: center;
-            background: #000; position: relative; padding: 20px;
+            background: #000; position: relative;
         }
         canvas { 
-            background: #fdfaf0; border: 15px solid #3d2b1f; 
-            box-shadow: 0 0 40px rgba(0,0,0,0.7); cursor: crosshair;
-            max-width: 100%; max-height: 100%;
+            background: #fdfaf0; border: 8px solid #2a1d15; 
+            box-shadow: 0 0 60px rgba(0,0,0,0.9); cursor: crosshair;
         }
         #ui { 
-            background: #261a12; padding: 25px; border: 2px solid #5c4033;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; 
-            flex-wrap: wrap; gap: 20px; align-content: flex-start;
+            position: absolute;
+            /* Positioned in the side gap */
+            right: 20px; 
+            background: rgba(38, 26, 18, 0.95); 
+            padding: 20px; border: 1px solid #5c4033;
+            border-radius: 8px;
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* Two columns to avoid "skinny" look */
+            gap: 15px;
+            width: auto;
+            max-width: 350px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+            backdrop-filter: blur(10px);
             z-index: 100;
         }
-        /* Adaptive Positioning */
-        .layout-wide #ui { width: 100%; height: auto; flex-direction: row; border-top: 4px solid #5c4033; order: 2; }
-        .layout-wide { flex-direction: column; }
-        .layout-tall #ui { width: 320px; height: 100%; flex-direction: column; border-right: 4px solid #5c4033; }
-        
-        .group { display: flex; flex-direction: column; gap: 8px; min-width: 140px; }
-        .label { font-size: 10px; font-weight: bold; color: #b39e7d; text-transform: uppercase; letter-spacing: 1px; }
-        button { cursor: pointer; padding: 10px 15px; border: 1px solid #7a5c3e; border-radius: 4px; background: #a67c52; color: #fff; font-weight: 600; transition: 0.2s; }
-        button.active { background: #ffd700; color: #3d2b1f; box-shadow: 0 0 15px rgba(255,215,0,0.3); }
-        select, input[type="range"] { background: #3d2b1f; color: #e2d1b3; border: 1px solid #5c4033; padding: 8px; border-radius: 4px; }
-        input[type="color"] { width: 100%; height: 40px; cursor: pointer; border: none; background: transparent; }
-        .row { display: flex; gap: 10px; }
+        .group { display: flex; flex-direction: column; gap: 5px; }
+        .full-width { grid-column: span 2; }
+        .label { font-size: 10px; font-weight: 800; color: #b39e7d; text-transform: uppercase; letter-spacing: 1px; }
+        button { 
+            cursor: pointer; padding: 10px; border: 1px solid #7a5c3e; 
+            border-radius: 4px; background: #a67c52; color: #fff; 
+            font-weight: 600; font-size: 12px;
+        }
+        button.active { background: #ffd700; color: #3d2b1f; border-color: #fff; }
+        input[type="range"] { accent-color: #ffd700; width: 100%; }
+        input[type="color"] { width: 100%; height: 35px; border: none; background: none; cursor: pointer; }
+        select { background: #3d2b1f; color: #e2d1b3; border: 1px solid #5c4033; padding: 5px; }
+        .footer-tools { grid-column: span 2; display: flex; gap: 5px; }
+        .footer-tools button { flex: 1; padding: 8px; font-size: 11px; }
     </style>
 </head>
-<body class="layout-tall">
-
-<div id="ui">
-    <div class="group">
-        <span class="label">Tray Geometry</span>
-        <select id="sizeSelect">
-            <option value="square">Square (1:1)</option>
-            <option value="tall">Classic Portrait (3:4)</option>
-            <option value="wide" selected>Modern Wide (16:9)</option>
-        </select>
-    </div>
-    <div class="group">
-        <span class="label">Pigment</span>
-        <input type="color" id="colorPicker" value="#8b0000">
-    </div>
-    <div class="group">
-        <span class="label">Viscosity</span>
-        <input type="range" id="viscositySlider" min="0.2" max="2.5" step="0.1" value="1.2">
-    </div>
-    <div class="group">
-        <span class="label">Instruments</span>
-        <div class="row">
-            <button id="dropBtn" class="active">Ink</button>
-            <button id="stylusBtn">Needle</button>
-            <button id="rakeBtn">Comb</button>
-        </div>
-    </div>
-    <div class="group" style="margin-top:auto">
-        <button id="undoBtn" style="background:#5c4033" disabled>Undo</button>
-        <button id="saveBtn" style="background:#4a6741">Export PNG</button>
-        <button id="resetBtn" style="background:transparent; color:#b39e7d; border:1px solid #5c4033">Wash Tray</button>
-    </div>
-</div>
+<body>
 
 <div id="stage">
     <div id="canvas-holder"></div>
+    
+    <div id="ui">
+        <div class="group">
+            <span class="label">Tray Shape</span>
+            <select id="sizeSelect">
+                <option value="square" selected>Square (1:1)</option>
+                <option value="wide">Wide (16:9)</option>
+                <option value="tall">Tall (3:4)</option>
+            </select>
+        </div>
+        <div class="group">
+            <span class="label">Pigment</span>
+            <input type="color" id="colorPicker" value="#8b0000">
+        </div>
+        <div class="group full-width">
+            <span class="label">Viscosity (Film Stretch)</span>
+            <input type="range" id="viscositySlider" min="0.2" max="2.5" step="0.1" value="1.2">
+        </div>
+        <div class="group full-width">
+            <span class="label">Instruments</span>
+            <div style="display: flex; gap: 5px;">
+                <button id="dropBtn" class="active" style="flex:1">Drop</button>
+                <button id="stylusBtn" style="flex:1">Needle</button>
+                <button id="rakeBtn" style="flex:1">Comb</button>
+            </div>
+        </div>
+        <div class="footer-tools">
+            <button id="undoBtn" style="background:#422e23" disabled>Undo</button>
+            <button id="resetBtn" style="background:#2a1d15; color:#b39e7d">Clear</button>
+            <button id="saveBtn" style="background:#4a6741">Export</button>
+        </div>
+    </div>
 </div>
 
 <script type="importmap">
@@ -91,10 +101,12 @@ const fragmentShader = `
     uniform vec3 uColor;
     uniform float uViscosity;
     varying vec2 vUv;
+
     void main() {
         vec2 uv = vUv;
         vec3 paper = vec3(0.99, 0.98, 0.94);
-        if (uMode == 0) {
+        
+        if (uMode == 0) { // Droplet expansion
             float d = distance(uv, uMouse);
             float r = 0.05;
             if (d > 0.0001) {
@@ -104,14 +116,14 @@ const fragmentShader = `
             vec4 b = texture2D(tPrev, uv);
             if(b.a < 0.1) b = vec4(paper, 1.0);
             gl_FragColor = (d < r) ? vec4(uColor, 1.0) : b;
-        } else if (uMode > 0) {
+        } else if (uMode > 0) { // Fluid stretching
             vec2 dir = uMouse - uPrevMouse;
             vec2 advUv = uv;
-            if (uMode == 1) {
+            if (uMode == 1) { // Needle
                 float d = distance(uv, uMouse);
                 float inf = exp(-d / 0.008);
                 advUv -= dir * inf * uViscosity;
-            } else {
+            } else { // Rake
                 vec2 perp = vec2(-(uMouse.y-uPrevMouse.y), uMouse.x-uPrevMouse.x);
                 for(float i = -4.0; i <= 4.0; i++) {
                     vec2 nPos = uMouse + (normalize(perp + 0.00001) * i * 0.1);
@@ -128,7 +140,7 @@ const fragmentShader = `
     }
 `;
 
-let width = 1200, height = 675; // Default 16:9
+let width, height;
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
 document.getElementById('canvas-holder').appendChild(renderer.domElement);
 
@@ -153,17 +165,34 @@ scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
 
 function resizeTray() {
     const type = document.getElementById('sizeSelect').value;
-    const vh = window.innerHeight - 80;
-    const vw = window.innerWidth - 80;
+    const vh = window.innerHeight - 40; // Full height minus small padding
+    const vw = window.innerWidth - 40;
 
-    if(type === 'square') { width = height = vh; document.body.className = 'layout-tall'; }
-    else if(type === 'tall') { height = vh; width = vh * 0.75; document.body.className = 'layout-tall'; }
-    else { width = vw; height = vw * (9/16); if(height > vh) { height = vh; width = vh * (16/9); } document.body.className = 'layout-wide'; }
+    if(type === 'square') {
+        width = height = Math.min(vh, vw);
+    } else if(type === 'tall') {
+        height = vh;
+        width = vh * 0.75;
+    } else {
+        width = vw;
+        height = vw * (9/16);
+        if(height > vh) { height = vh; width = vh * (16/9); }
+    }
 
     renderer.setSize(width, height);
     read = new THREE.WebGLRenderTarget(width, height);
     write = new THREE.WebGLRenderTarget(width, height);
     material.uniforms.tPrev.value = read.texture;
+    
+    // Reposition UI based on where the space is
+    const ui = document.getElementById('ui');
+    const trayRect = renderer.domElement.getBoundingClientRect();
+    if (window.innerWidth - trayRect.right > 350) {
+        ui.style.right = '20px'; ui.style.bottom = 'auto'; ui.style.top = '20px';
+    } else {
+        ui.style.right = '20px'; ui.style.bottom = '20px'; ui.style.top = 'auto';
+    }
+
     reset();
 }
 
