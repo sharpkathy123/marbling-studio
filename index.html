@@ -3,63 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Master Marbling - Palette Edition</title>
+    <title>Master Marbling - Visible Layout</title>
     <style>
         * { box-sizing: border-box; }
-        body, html { 
-            margin: 0; padding: 0; width: 100vw; height: 100vh; 
-            overflow: hidden; background: #000; font-family: system-ui, sans-serif;
+        
+        /* Locking the body to the viewport to prevent all scrolling */
+        html, body { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            overflow: hidden; background: #000; font-family: sans-serif;
         }
 
-        #app-container { display: grid; width: 100vw; height: 100vh; }
+        #app-container {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            background: #120c08;
+        }
 
-        /* Portrait: Square Top, UI Bottom filler */
+        /* Portrait: Tray top, UI bottom */
         @media (orientation: portrait) {
-            #app-container { grid-template-rows: 100vw 1fr; grid-template-columns: 100vw; }
-            #ui { border-top: 2px solid #3d2b1f; }
+            #app-container { flex-direction: column; }
+            #stage { width: 100vw; height: 100vw; flex-shrink: 0; }
+            #ui { flex: 1; width: 100%; border-top: 2px solid #3d2b1f; }
         }
 
-        /* Landscape: Square Left, UI Right filler */
+        /* Landscape: Tray left, UI right */
         @media (orientation: landscape) {
-            #app-container { grid-template-columns: 100vh 1fr; grid-template-rows: 100vh; }
-            #ui { border-left: 2px solid #3d2b1f; }
+            #app-container { flex-direction: row; }
+            #stage { height: 100vh; width: 100vh; flex-shrink: 0; }
+            #ui { flex: 1; height: 100%; border-left: 2px solid #3d2b1f; }
         }
 
-        #stage { background: #0a0a0a; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        #stage { 
+            background: #000; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            overflow: hidden; 
+        }
+
         #ui { 
-            background: #1e140d; padding: 15px; display: flex; flex-direction: column; 
-            gap: 12px; overflow-y: auto; color: #e2d1b3; 
+            background: #1e140d; 
+            padding: 12px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 10px; 
+            overflow-y: auto; /* Safety for small screens */
+            color: #e2d1b3;
         }
 
         canvas { background: #fdfaf0; touch-action: none; display: block; }
 
-        .group { display: flex; flex-direction: column; gap: 5px; }
-        .label { font-size: 10px; font-weight: 800; color: #b39e7d; text-transform: uppercase; }
+        .label { font-size: 10px; font-weight: 800; color: #b39e7d; text-transform: uppercase; margin-bottom: 4px; }
         
-        /* Palette Styles */
-        .palette-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 5px; }
+        /* Palette */
+        .palette-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
         .swatch { 
-            height: 40px; border-radius: 4px; border: 2px solid #3d2b1f; 
-            cursor: pointer; transition: 0.2s; 
+            height: 34px; border-radius: 4px; border: 2px solid #3d2b1f; 
+            cursor: pointer; 
         }
-        .swatch.active { border-color: #ffd700; transform: scale(1.05); box-shadow: 0 0 10px rgba(255,215,0,0.3); }
+        .swatch.active { border-color: #ffd700; transform: scale(1.05); }
 
+        .control-row { display: flex; flex-direction: column; gap: 2px; }
+        
         button { 
-            cursor: pointer; padding: 10px; border: 1px solid #7a5c3e; 
-            border-radius: 4px; background: #a67c52; color: #fff; font-size: 12px;
+            cursor: pointer; padding: 8px; border: 1px solid #7a5c3e; 
+            border-radius: 4px; background: #a67c52; color: #fff; font-size: 11px;
         }
         button.active { background: #ffd700; color: #3d2b1f; font-weight: bold; }
-        input[type="range"] { accent-color: #ffd700; cursor: pointer; }
-        input[type="color"] { width: 100%; height: 30px; border: 1px solid #3d2b1f; background: #000; cursor: pointer; }
+        
+        input[type="range"] { accent-color: #ffd700; margin: 5px 0; }
+        input[type="color"] { width: 100%; height: 30px; border: none; background: transparent; cursor: pointer; }
+
+        .footer { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: auto; }
     </style>
 </head>
 <body>
 
 <div id="app-container">
-    <div id="stage"></div>
+    <div id="stage">
+        <canvas id="mainCanvas"></canvas>
+    </div>
+
     <div id="ui">
-        <div class="group">
-            <span class="label">Pigment Palette</span>
+        <div class="control-row">
+            <span class="label">Palette</span>
             <div class="palette-grid" id="palette">
                 <div class="swatch active" style="background:#8b0000" data-color="#8b0000"></div>
                 <div class="swatch" style="background:#003366" data-color="#003366"></div>
@@ -69,26 +97,22 @@
             <input type="color" id="colorPicker" value="#8b0000">
         </div>
         
-        <div class="group">
-            <span class="label">Viscosity / Stretch</span>
+        <div class="control-row">
+            <span class="label">Viscosity / Size</span>
             <input type="range" id="viscositySlider" min="0.2" max="3.0" step="0.1" value="1.2">
-        </div>
-        
-        <div class="group">
-            <span class="label">Tip Size</span>
             <input type="range" id="sizeSlider" min="0.1" max="4.0" step="0.1" value="1.0">
         </div>
 
-        <div class="group">
-            <span class="label">Instruments</span>
-            <div style="display:flex; gap:4px">
+        <div class="control-row">
+            <span class="label">Tools</span>
+            <div style="display:flex; gap:3px">
                 <button id="dropBtn" class="active" style="flex:1">Drop</button>
                 <button id="stylusBtn" style="flex:1">Needle</button>
                 <button id="rakeBtn" style="flex:1">Rake</button>
             </div>
         </div>
 
-        <div style="margin-top: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+        <div class="footer">
             <button id="undoBtn" style="background:#3d2b1f" disabled>Undo</button>
             <button id="resetBtn" style="background:transparent; border:1px solid #3d2b1f">Clear</button>
             <button id="saveBtn" style="background:#4a6741; grid-column: span 2;">Export Artwork</button>
@@ -149,9 +173,9 @@ const fragmentShader = `
     }
 `;
 
-let size;
-const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-document.getElementById('stage').appendChild(renderer.domElement);
+let canvasSize;
+const canvas = document.getElementById('mainCanvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
 
 let read, write;
 const history = [];
@@ -170,11 +194,14 @@ const material = new THREE.ShaderMaterial({
 });
 scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
 
-function setup() {
-    size = Math.min(window.innerWidth, window.innerHeight);
-    renderer.setSize(size, size);
-    read = new THREE.WebGLRenderTarget(size, size);
-    write = new THREE.WebGLRenderTarget(size, size);
+function init() {
+    // Re-calculate based on current viewport
+    const stage = document.getElementById('stage');
+    canvasSize = Math.min(stage.clientWidth, stage.clientHeight);
+    
+    renderer.setSize(canvasSize, canvasSize);
+    read = new THREE.WebGLRenderTarget(canvasSize, canvasSize);
+    write = new THREE.WebGLRenderTarget(canvasSize, canvasSize);
     material.uniforms.tPrev.value = read.texture;
     reset();
 }
@@ -188,7 +215,7 @@ function reset() {
 }
 
 function captureState() {
-    const snap = new THREE.WebGLRenderTarget(size, size);
+    const snap = new THREE.WebGLRenderTarget(canvasSize, canvasSize);
     renderer.setRenderTarget(snap); renderer.render(scene, camera);
     history.push(snap);
     if (history.length > 15) history.shift().dispose();
@@ -219,12 +246,33 @@ function animate() {
     renderer.render(scene, camera);
 }
 
-// Interaction
+// Controls Logic
+let activeColor = "#8b0000";
+let activeMode = 0;
+let drawing = false;
+
+const swatches = document.querySelectorAll('.swatch');
+swatches.forEach(sw => {
+    sw.onclick = () => {
+        swatches.forEach(s => s.classList.remove('active'));
+        sw.classList.add('active');
+        activeColor = sw.dataset.color;
+        document.getElementById('colorPicker').value = activeColor;
+    };
+});
+
+document.getElementById('colorPicker').oninput = (e) => {
+    activeColor = e.target.value;
+    const activeSw = document.querySelector('.swatch.active');
+    activeSw.style.background = activeColor;
+    activeSw.dataset.color = activeColor;
+};
+
 const getMouse = (e) => {
-    const rect = renderer.domElement.getBoundingClientRect();
+    const rect = canvas.getBoundingClientRect();
     const cx = e.touches ? e.touches[0].clientX : e.clientX;
     const cy = e.touches ? e.touches[0].clientY : e.clientY;
-    return new THREE.Vector2((cx - rect.left)/size, 1 - (cy - rect.top)/size);
+    return new THREE.Vector2((cx - rect.left)/canvasSize, 1 - (cy - rect.top)/canvasSize);
 };
 
 const onDown = (e) => {
@@ -244,27 +292,6 @@ const onMove = (e) => {
     material.uniforms.uMouse.value.copy(getMouse(e));
 };
 
-// UI Listeners
-let drawing = false, activeMode = 0, activeColor = "#8b0000";
-
-const swatches = document.querySelectorAll('.swatch');
-swatches.forEach(sw => {
-    sw.onclick = () => {
-        swatches.forEach(s => s.classList.remove('active'));
-        sw.classList.add('active');
-        activeColor = sw.dataset.color;
-        document.getElementById('colorPicker').value = activeColor;
-    };
-});
-
-document.getElementById('colorPicker').oninput = (e) => {
-    const color = e.target.value;
-    activeColor = color;
-    const activeSwatch = document.querySelector('.swatch.active');
-    activeSwatch.style.background = color;
-    activeSwatch.dataset.color = color;
-};
-
 window.addEventListener('mousedown', onDown);
 window.addEventListener('mousemove', onMove);
 window.addEventListener('mouseup', () => { drawing = false; material.uniforms.uMode.value = -1; });
@@ -281,7 +308,7 @@ document.getElementById('rakeBtn').onclick = () => { activeMode = 2; setActive('
 document.getElementById('saveBtn').onclick = () => {
     const link = document.createElement('a');
     link.download = 'marbling.png';
-    link.href = renderer.domElement.toDataURL();
+    link.href = canvas.toDataURL();
     link.click();
 };
 
@@ -289,7 +316,7 @@ function setActive(id) {
     ['dropBtn', 'stylusBtn', 'rakeBtn'].forEach(b => document.getElementById(b).classList.toggle('active', b === id));
 }
 
-setup();
+init();
 animate();
 </script>
 </body>
