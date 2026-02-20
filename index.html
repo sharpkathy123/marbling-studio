@@ -2,38 +2,61 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Master Marbling Studio - Undo Edition</title>
+    <title>Master Marbling Studio - Corrected Undo</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #0a0a0a; font-family: 'Georgia', serif; touch-action: none; }
+        body { 
+            margin: 0; 
+            background: #1a1a1a; 
+            font-family: 'Georgia', serif; 
+            display: flex; 
+            height: 100vh;
+            overflow: hidden;
+        }
         #ui { 
-            position: absolute; top: 20px; left: 20px; z-index: 10; 
+            width: 300px;
             background: linear-gradient(135deg, #3d2b1f 0%, #261a12 100%); 
-            color: #e2d1b3; padding: 20px; width: 280px;
-            border-radius: 8px; border: 2px solid #5c4033;
-            box-shadow: 0 15px 50px rgba(0,0,0,0.5);
-            display: flex; flex-direction: column; gap: 12px;
-            max-height: 90vh; overflow-y: auto;
+            color: #e2d1b3; 
+            padding: 20px;
+            border-right: 4px solid #5c4033;
+            box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+            display: flex; 
+            flex-direction: column; 
+            gap: 15px;
+            z-index: 10;
+        }
+        #tray-container {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #0a0a0a;
+            padding: 40px;
+            touch-action: none;
+        }
+        canvas { 
+            border: 12px solid #3d2b1f;
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+            cursor: crosshair;
         }
         .group { display: flex; flex-direction: column; gap: 6px; }
         .label { font-size: 11px; font-weight: bold; color: #b39e7d; text-transform: uppercase; }
-        button { cursor: pointer; padding: 10px; border: 1px solid #7a5c3e; border-radius: 4px; background: #a67c52; color: #fff; font-weight: 600; transition: 0.2s; }
-        button.active { background: #ffd700; color: #3d2b1f; }
-        button#undoBtn { background: #5c4033; color: #e2d1b3; border: 1px solid #7a5c3e; }
-        button#undoBtn:disabled { opacity: 0.3; cursor: not-allowed; }
-        input[type="color"] { width: 100%; height: 45px; border-radius: 4px; border: 2px solid #5c4033; background: #261a12; cursor: pointer; }
-        input[type="range"] { accent-color: #ffd700; cursor: pointer; }
+        button { cursor: pointer; padding: 12px; border: 1px solid #7a5c3e; border-radius: 4px; background: #a67c52; color: #fff; font-weight: 600; }
+        button.active { background: #ffd700; color: #3d2b1f; border-color: #fff; }
+        button#undoBtn { background: #5c4033; color: #e2d1b3; }
+        button#undoBtn:disabled { opacity: 0.2; }
+        input[type="color"] { width: 100%; height: 50px; border-radius: 4px; border: 2px solid #5c4033; background: #261a12; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div id="ui">
     <div class="group">
-        <span class="label">Pigment Vessel</span>
+        <span class="label">Pigment</span>
         <input type="color" id="colorPicker" value="#8b0000">
     </div>
     <div class="group">
         <span class="label">Film Viscosity</span>
-        <input type="range" id="viscositySlider" min="0.2" max="2.5" step="0.1" value="1.2">
+        <input type="range" id="viscositySlider" min="0.2" max="2.5" step="0.1" value="1.2" style="accent-color:#ffd700">
     </div>
     <div class="group">
         <span class="label">Instruments</span>
@@ -41,10 +64,14 @@
         <button id="stylusBtn">Needle (Stretch)</button>
         <button id="rakeBtn">Comb (Rake)</button>
     </div>
-    <hr style="border: 0; border-top: 1px solid #5c4033; margin: 5px 0;">
-    <button id="undoBtn">Undo Last Action</button>
-    <button id="saveBtn" style="background: #4a6741; color: white;">Dip Paper (Export)</button>
-    <button id="resetBtn" style="background: transparent; border: 1px solid #5c4033; color: #b39e7d; padding: 5px; cursor: pointer;">Wash Tray</button>
+    <hr style="border: 0; border-top: 1px solid #5c4033;">
+    <button id="undoBtn" disabled>Undo Last Action</button>
+    <button id="saveBtn" style="background: #4a6741; color: white;">Export Result</button>
+    <button id="resetBtn" style="background: transparent; border: 1px solid #5c4033; color: #b39e7d;">Clear Tray</button>
+</div>
+
+<div id="tray-container">
+    <div id="canvas-holder"></div>
 </div>
 
 <script type="importmap">
@@ -62,66 +89,58 @@ const fragmentShader = `
     uniform vec3 uColor;
     uniform float uViscosity;
     varying vec2 vUv;
-
     void main() {
         vec2 uv = vUv;
-        vec3 paperColor = vec3(0.99, 0.98, 0.94);
-
+        vec3 paper = vec3(0.99, 0.98, 0.94);
         if (uMode == 0) {
             float d = distance(uv, uMouse);
-            float radius = 0.05;
+            float r = 0.05;
             if (d > 0.0001) {
-                float m = sqrt(1.0 + (radius * radius) / (d * d));
-                uv = uMouse + (uv - uMouse) / m;
+                float m = sqrt(1.0 + (r*r)/(d*d));
+                uv = uMouse + (uv - uMouse)/m;
             }
-            vec4 base = texture2D(tPrev, uv);
-            if(base.a < 0.1) base = vec4(paperColor, 1.0);
-            gl_FragColor = (d < radius) ? vec4(uColor, 1.0) : base;
-
+            vec4 b = texture2D(tPrev, uv);
+            if(b.a < 0.1) b = vec4(paper, 1.0);
+            gl_FragColor = (d < r) ? vec4(uColor, 1.0) : b;
         } else if (uMode > 0) {
-            vec2 mouseDir = uMouse - uPrevMouse;
-            vec2 advectedUv = uv;
+            vec2 dir = uMouse - uPrevMouse;
+            vec2 advUv = uv;
             if (uMode == 1) {
-                float dist = distance(uv, uMouse);
-                float radius = 0.008; 
-                float influence = exp(-dist / radius);
-                advectedUv -= mouseDir * influence * uViscosity;
+                float d = distance(uv, uMouse);
+                float inf = exp(-d / 0.008);
+                advUv -= dir * inf * uViscosity;
             } else {
                 vec2 perp = vec2(-(uMouse.y-uPrevMouse.y), uMouse.x-uPrevMouse.x);
                 for(float i = -4.0; i <= 4.0; i++) {
-                    vec2 needlePos = uMouse + (normalize(perp + 0.00001) * i * 0.1);
-                    float d = distance(uv, needlePos);
-                    float influence = exp(-d / 0.015);
-                    advectedUv -= mouseDir * influence * (uViscosity * 0.7);
+                    vec2 nPos = uMouse + (normalize(perp + 0.00001) * i * 0.1);
+                    float inf = exp(-distance(uv, nPos) / 0.015);
+                    advUv -= dir * inf * (uViscosity * 0.7);
                 }
             }
-            vec4 sampled = texture2D(tPrev, advectedUv);
-            if(sampled.a < 0.1) sampled = vec4(paperColor, 1.0);
-            gl_FragColor = sampled;
+            vec4 s = texture2D(tPrev, advUv);
+            gl_FragColor = (s.a < 0.1) ? vec4(paper, 1.0) : s;
         } else {
-            vec4 current = texture2D(tPrev, uv);
-            if(current.a < 0.1) current = vec4(paperColor, 1.0);
-            gl_FragColor = current;
+            vec4 c = texture2D(tPrev, uv);
+            gl_FragColor = (c.a < 0.1) ? vec4(paper, 1.0) : c;
         }
     }
 `;
 
+const holder = document.getElementById('canvas-holder');
+const width = 800, height = 600;
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
+renderer.setSize(width, height);
+holder.appendChild(renderer.domElement);
 
-const createRT = () => new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, { format: THREE.RGBAFormat });
-let currentRead = createRT(), currentWrite = createRT();
-
-// UNDO STORAGE
-const historyStack = [];
-const MAX_HISTORY = 10;
+const createRT = () => new THREE.WebGLRenderTarget(width, height, { format: THREE.RGBAFormat });
+let read = createRT(), write = createRT();
+const history = [];
 
 const scene = new THREE.Scene();
 const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 const material = new THREE.ShaderMaterial({
     uniforms: {
-        tPrev: { value: currentRead.texture },
+        tPrev: { value: read.texture },
         uMouse: { value: new THREE.Vector2(-1,-1) },
         uPrevMouse: { value: new THREE.Vector2(-1,-1) },
         uMode: { value: -1 },
@@ -131,7 +150,6 @@ const material = new THREE.ShaderMaterial({
     vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position, 1.0); }`,
     fragmentShader
 });
-
 scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
 
 let drawing = false;
@@ -139,64 +157,59 @@ let activeMode = 0;
 
 function reset() {
     renderer.setClearColor(0xfdfaf0, 1);
-    renderer.setRenderTarget(currentRead); renderer.clear();
-    renderer.setRenderTarget(currentWrite); renderer.clear();
+    [read, write].forEach(rt => { renderer.setRenderTarget(rt); renderer.clear(); });
     renderer.setRenderTarget(null);
-    historyStack.length = 0;
-    updateUndoButton();
+    history.forEach(rt => rt.dispose());
+    history.length = 0;
+    updateUndoBtn();
 }
 reset();
 
-function saveHistory() {
-    const historyRT = createRT();
-    renderer.setRenderTarget(historyRT);
+function captureState() {
+    const snap = createRT();
+    renderer.setRenderTarget(snap);
     renderer.render(scene, camera);
-    historyStack.push(historyRT);
-    if (historyStack.length > MAX_HISTORY) {
-        const old = historyStack.shift();
-        old.dispose();
-    }
-    updateUndoButton();
+    history.push(snap);
+    if (history.length > 15) history.shift().dispose();
+    updateUndoBtn();
 }
 
 function undo() {
-    if (historyStack.length === 0) return;
-    const lastState = historyStack.pop();
-    
-    // Copy history back to current buffers
+    if (history.length === 0) return;
+    const last = history.pop();
     material.uniforms.uMode.value = -1;
-    material.uniforms.tPrev.value = lastState.texture;
-    
-    renderer.setRenderTarget(currentRead);
-    renderer.render(scene, camera);
-    renderer.setRenderTarget(currentWrite);
-    renderer.render(scene, camera);
-    
-    lastState.dispose();
-    updateUndoButton();
+    material.uniforms.tPrev.value = last.texture;
+    [read, write].forEach(rt => {
+        renderer.setRenderTarget(rt);
+        renderer.render(scene, camera);
+    });
+    renderer.setRenderTarget(null);
+    material.uniforms.tPrev.value = read.texture;
+    last.dispose();
+    updateUndoBtn();
 }
 
-function updateUndoButton() {
-    document.getElementById('undoBtn').disabled = historyStack.length === 0;
-}
+function updateUndoBtn() { document.getElementById('undoBtn').disabled = history.length === 0; }
 
 function animate() {
     requestAnimationFrame(animate);
     material.uniforms.uViscosity.value = parseFloat(document.getElementById('viscositySlider').value);
-    renderer.setRenderTarget(currentWrite);
+    renderer.setRenderTarget(write);
     renderer.render(scene, camera);
-    material.uniforms.tPrev.value = currentWrite.texture;
-    [currentRead, currentWrite] = [currentWrite, currentRead];
+    material.uniforms.tPrev.value = write.texture;
+    [read, write] = [write, read];
     renderer.setRenderTarget(null);
     renderer.render(scene, camera);
 }
 
-const getMousePos = (e) => new THREE.Vector2(e.clientX/window.innerWidth, 1-(e.clientY/window.innerHeight));
+const getMouse = (e) => {
+    const rect = renderer.domElement.getBoundingClientRect();
+    return new THREE.Vector2((e.clientX - rect.left)/width, 1 - (e.clientY - rect.top)/height);
+};
 
-window.addEventListener('pointerdown', (e) => {
-    if(e.target.closest('#ui')) return;
-    saveHistory(); // Save state BEFORE the new action starts
-    const pos = getMousePos(e);
+renderer.domElement.addEventListener('pointerdown', (e) => {
+    captureState();
+    const pos = getMouse(e);
     material.uniforms.uMouse.value.copy(pos);
     material.uniforms.uPrevMouse.value.copy(pos);
     drawing = true;
@@ -207,23 +220,19 @@ window.addEventListener('pointerdown', (e) => {
 window.addEventListener('pointermove', (e) => {
     if (!drawing) return;
     material.uniforms.uPrevMouse.value.copy(material.uniforms.uMouse.value);
-    material.uniforms.uMouse.value.copy(getMousePos(e));
+    material.uniforms.uMouse.value.copy(getMouse(e));
 });
 
-window.addEventListener('pointerup', () => {
-    drawing = false;
-    material.uniforms.uMode.value = -1;
-});
+window.addEventListener('pointerup', () => { drawing = false; material.uniforms.uMode.value = -1; });
 
 document.getElementById('undoBtn').onclick = undo;
 document.getElementById('resetBtn').onclick = reset;
-document.getElementById('colorPicker').oninput = (e) => { activeMode = 0; setActive('dropBtn'); material.uniforms.uColor.value.set(e.target.value); };
 document.getElementById('dropBtn').onclick = () => { activeMode = 0; setActive('dropBtn'); };
 document.getElementById('stylusBtn').onclick = () => { activeMode = 1; setActive('stylusBtn'); };
 document.getElementById('rakeBtn').onclick = () => { activeMode = 2; setActive('rakeBtn'); };
 document.getElementById('saveBtn').onclick = () => {
     const link = document.createElement('a');
-    link.download = 'marbling_art.png';
+    link.download = 'marbling.png';
     link.href = renderer.domElement.toDataURL();
     link.click();
 };
