@@ -3,26 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Suminagashi Pro Studio</title>
+    <title>Suminagashi Ultra-Fluid</title>
     <style>
         :root { --red-zone: #E63946; --blue-zone: #457B9D; }
-        body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #111; }
+        body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; font-family: system-ui; background: #000; }
         #app-wrapper { display: flex; width: 100%; height: 100%; }
-        #tool-dock { background: var(--red-zone); display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 20px; width: 320px; box-shadow: 10px 0 30px rgba(0,0,0,0.3); z-index: 10; }
+        #tool-dock { background: var(--red-zone); display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 20px; width: 280px; z-index: 10; border-right: 2px solid rgba(0,0,0,0.2); }
         #work-zone { background: var(--blue-zone); display: flex; justify-content: center; align-items: center; flex-grow: 1; }
         
-        @media (orientation: portrait) { #app-wrapper { flex-direction: column; } #tool-dock { width: 100%; height: 35%; } }
+        @media (orientation: portrait) { #app-wrapper { flex-direction: column; } #tool-dock { width: 100%; height: 30%; border-right: none; border-bottom: 2px solid rgba(0,0,0,0.2); } }
 
-        canvas { background: white; width: min(90%, 90% * (height / width)); aspect-ratio: 1 / 1; border-radius: 4px; cursor: crosshair; touch-action: none; }
+        canvas { background: white; width: min(90%, 90% * (height / width)); aspect-ratio: 1 / 1; border-radius: 4px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); touch-action: none; }
         
         .palette { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 15px; }
-        .swatch { width: 40px; height: 40px; border-radius: 50%; border: 3px solid white; cursor: pointer; transition: 0.2s; }
+        .swatch { width: 35px; height: 35px; border-radius: 50%; border: 3px solid white; cursor: pointer; }
         .swatch.active { transform: scale(1.2); border-color: #1D3557; }
         .tool-bar { display: flex; gap: 15px; }
-        .tool-item { background: white; border: none; padding: 15px; border-radius: 12px; cursor: pointer; font-size: 1.5rem; transition: 0.2s; }
+        .tool-item { background: white; border: none; padding: 15px; border-radius: 12px; cursor: pointer; font-size: 1.5rem; }
         .tool-item.active { background: #1D3557; color: white; }
-        .action-btns { display: flex; gap: 10px; }
-        .btn { background: #1D3557; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .btn { background: #1D3557; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; width: 80%; }
     </style>
 </head>
 <body>
@@ -41,17 +40,15 @@
             <button class="tool-item active" id="brush">🖌️</button>
             <button class="tool-item" id="comb">🪮</button>
         </div>
-        <div class="action-btns">
-            <button class="btn" onclick="clearTray()">Clear</button>
-            <button class="btn" onclick="download()">Save PNG</button>
-        </div>
+        <button class="btn" onclick="download()">Save Design</button>
+        <button class="btn" onclick="location.reload()" style="background:rgba(0,0,0,0.2)">Reset Tray</button>
     </div>
     <div id="work-zone"><canvas id="tray"></canvas></div>
 </div>
 
 <script>
 const canvas = document.getElementById('tray');
-const ctx = canvas.getContext('2d');
+const ctx = canvas.getContext('2d', { alpha: false }); // Optimization
 let drops = [];
 let activeColor = "#1D3557";
 let activeTool = "brush";
@@ -64,44 +61,41 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-function clearTray() { drops = []; }
-
 function download() {
     const link = document.createElement('a');
-    link.download = 'marbled-design.png';
+    link.download = 'suminagashi-art.png';
     link.href = canvas.toDataURL();
     link.click();
 }
 
-function addDrop(x, y, baseR, color) {
-    const count = 1 + Math.floor(Math.random() * 2);
-    for(let j=0; j<count; j++) {
-        let r = baseR * (0.6 + Math.random() * 0.8);
-        drops.forEach(drop => {
-            drop.vertices.forEach(v => {
-                let dx = v.x - x, dy = v.y - y;
-                let d2 = dx*dx + dy*dy;
-                let m = Math.sqrt(1 + (r*r)/d2);
-                v.x = x + dx * m; v.y = y + dy * m;
-            });
+function addDrop(x, y, r, color) {
+    drops.forEach(drop => {
+        drop.vertices.forEach(v => {
+            let dx = v.x - x, dy = v.y - y;
+            let d2 = dx*dx + dy*dy;
+            let m = Math.sqrt(1 + (r*r)/d2);
+            v.x = x + dx * m; v.y = y + dy * m;
         });
-        let vts = [];
-        for(let i=0; i<200; i++) {
-            let a = (i/200) * Math.PI * 2;
-            vts.push({ x: x + Math.cos(a)*r, y: y + Math.sin(a)*r });
-        }
-        drops.push({ color, vertices: vts });
+    });
+    let vts = [];
+    for(let i=0; i<180; i++) {
+        let a = (i/180) * Math.PI * 2;
+        vts.push({ x: x + Math.cos(a)*r, y: y + Math.sin(a)*r });
     }
+    drops.push({ color, vertices: vts });
 }
 
+// Fixed Resampling: Caps points to prevent "Tray Clearing" glitch
 function resample(drop) {
-    const threshold = 6;
-    if (drop.vertices.length > 2000) return;
+    const threshold = 10; // Slightly higher threshold for better performance
+    if (drop.vertices.length > 1500) return; 
+
     const next = [];
     for (let i = 0; i < drop.vertices.length; i++) {
         let v1 = drop.vertices[i], v2 = drop.vertices[(i + 1) % drop.vertices.length];
         next.push(v1);
-        if (Math.hypot(v1.x - v2.x, v1.y - v2.y) > threshold) {
+        let dist = Math.sqrt((v1.x - v2.x)**2 + (v1.y - v2.y)**2);
+        if (dist > threshold) {
             next.push({ x: (v1.x + v2.x)/2, y: (v1.y + v2.y)/2 });
         }
     }
@@ -110,10 +104,10 @@ function resample(drop) {
 
 function autoSweep(edge) {
     const size = canvas.width;
-    const steps = 50;
-    const numTines = 28;
+    const steps = 40;
+    const numTines = 22;
     const spacing = size / (numTines + 1);
-    const radius = 12;
+    const radius = 15;
     let step = 0;
 
     function animate() {
@@ -128,18 +122,18 @@ function autoSweep(edge) {
                 let speed = size / steps;
                 if (edge === 'left' || edge === 'right') {
                     dist = Math.abs(v.x - pos);
-                    dx = (edge === 'left' ? 1 : -1) * speed;
+                    dx = (edge === 'left' ? 1.5 : -1.5) * speed;
                 } else {
                     dist = Math.abs(v.y - pos);
-                    dy = (edge === 'top' ? 1 : -1) * speed;
+                    dy = (edge === 'top' ? 1.5 : -1.5) * speed;
                 }
                 if (dist < radius) {
-                    let force = Math.pow(1 - dist / radius, 2);
+                    let force = Math.pow(1 - dist / radius, 1.5);
                     v.x += dx * force; v.y += dy * force;
                     moved = true;
                 }
             });
-            if (moved && step % 2 === 0) resample(drop);
+            if (moved && step % 3 === 0) resample(drop); // Less frequent resampling
         });
         step++;
         requestAnimationFrame(animate);
@@ -150,10 +144,13 @@ function autoSweep(edge) {
 function render() {
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
     drops.forEach(drop => {
         ctx.beginPath();
         ctx.fillStyle = drop.color;
         const v = drop.vertices;
+        if (v.length < 3) return;
+        
         ctx.moveTo((v[0].x + v[v.length-1].x)/2, (v[0].y + v[v.length-1].y)/2);
         for (let i = 0; i < v.length; i++) {
             let c = v[i], n = v[(i + 1) % v.length];
@@ -168,8 +165,8 @@ render();
 canvas.addEventListener('mousedown', (e) => {
     const r = canvas.getBoundingClientRect();
     const x = e.clientX - r.left, y = e.clientY - r.top;
-    const m = 60;
-    if (activeTool === "brush") addDrop(x, y, 35, activeColor);
+    const m = 50;
+    if (activeTool === "brush") addDrop(x, y, 30, activeColor);
     else {
         if (x < m) autoSweep('left');
         else if (x > canvas.width - m) autoSweep('right');
@@ -178,6 +175,7 @@ canvas.addEventListener('mousedown', (e) => {
     }
 });
 
+// UI Controls
 document.querySelectorAll('.swatch').forEach(s => {
     s.onclick = () => {
         document.querySelector('.swatch.active').classList.remove('active');
