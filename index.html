@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Suminagashi Rake Studio</title>
+    <title>Suminagashi Mega Rake</title>
     <style>
         :root { --red-zone: #FF4D4D; --blue-zone: #4D79FF; }
         body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; font-family: sans-serif; }
@@ -91,15 +91,14 @@ function addDrop(x, y, r, color) {
     drops.push({ color, vertices });
 }
 
-// Skinny Tine Logic
 function applyTine(x, y, dx, dy, radius) {
     drops.forEach(drop => {
         drop.vertices.forEach(v => {
             let distSq = (x - v.x)**2 + (y - v.y)**2;
             if (distSq < radius * radius) {
                 let force = Math.pow(1 - Math.sqrt(distSq) / radius, 2);
-                v.x += dx * force * 0.8;
-                v.y += dy * force * 0.8;
+                v.x += dx * force * 0.9;
+                v.y += dy * force * 0.9;
             }
         });
     });
@@ -134,13 +133,13 @@ function handleMove(e) {
     let dx = pos.x - lastX;
     let dy = pos.y - lastY;
     
-    // Create 7 skinny tines in a row
-    const numTines = 7;
-    const spacing = 15; // Distance between tines
-    const tineRadius = 12; // Skinny radius for sharp lines
+    // MEGA RAKE SETTINGS
+    const traySize = canvas.width;
+    const numTines = 20; // Increased count
+    const spacing = traySize / (numTines + 2); // Spaced to cover ~90% of tray width
+    const tineRadius = 10; // Extra skinny for fine detail
 
     for (let i = -Math.floor(numTines/2); i <= Math.floor(numTines/2); i++) {
-        // Calculate perpendicular offset for the rake
         let angle = Math.atan2(dy, dx) + Math.PI/2;
         let offsetX = Math.cos(angle) * (i * spacing);
         let offsetY = Math.sin(angle) * (i * spacing);
@@ -160,7 +159,7 @@ function getPos(e) {
 
 canvas.addEventListener('mousedown', handleStart);
 canvas.addEventListener('mousemove', handleMove);
-window.addEventListener('mouseup', () => isDrawing = false);
+window.addEventListener('mouseup', () => isDragging = false);
 canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleStart(e); });
 canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handleMove(e); });
 window.addEventListener('touchend', () => isDrawing = false);
