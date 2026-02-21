@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Suminagashi Mega Rake</title>
+    <title>Fluid Marbling Studio</title>
     <style>
         :root { --red-zone: #FF4D4D; --blue-zone: #4D79FF; }
-        body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; font-family: sans-serif; }
+        body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; font-family: sans-serif; background: #222; }
         #app-wrapper { display: flex; width: 100%; height: 100%; }
         
         @media (orientation: landscape) { 
@@ -23,13 +23,13 @@
         #tool-dock { background: var(--red-zone); display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 20px; }
         #work-zone { background: var(--blue-zone); display: flex; justify-content: center; align-items: center; }
         
-        canvas { background: white; width: min(85%, 85% * (height / width)); aspect-ratio: 1 / 1; border-radius: 8px; cursor: crosshair; touch-action: none; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        canvas { background: white; width: min(90%, 90% * (height / width)); aspect-ratio: 1 / 1; border-radius: 4px; cursor: crosshair; touch-action: none; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
         
         .palette { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 15px; }
-        .swatch { width: 40px; height: 40px; border-radius: 50%; border: 3px solid white; cursor: pointer; }
+        .swatch { width: 40px; height: 40px; border-radius: 50%; border: 3px solid white; cursor: pointer; transition: 0.2s; }
         .swatch.active { transform: scale(1.2); border-color: #333; }
         .tool-bar { display: flex; gap: 15px; }
-        .tool-item { background: white; border: none; padding: 15px; border-radius: 12px; cursor: pointer; font-size: 1.5rem; transition: 0.2s; }
+        .tool-item { background: white; border: none; padding: 15px; border-radius: 12px; cursor: pointer; font-size: 1.5rem; }
         .tool-item.active { background: #333; color: white; }
     </style>
 </head>
@@ -39,11 +39,11 @@
     <div id="tool-dock">
         <div class="palette">
             <div class="swatch active" style="background: #111;" data-color="#111111"></div>
-            <div class="swatch" style="background: #E63946;" data-color="#E63946"></div>
-            <div class="swatch" style="background: #FFB703;" data-color="#FFB703"></div>
-            <div class="swatch" style="background: #8ECAE6;" data-color="#8ECAE6"></div>
-            <div class="swatch" style="background: #219EBC;" data-color="#219EBC"></div>
-            <div class="swatch" style="background: #023047;" data-color="#023047"></div>
+            <div class="swatch" style="background: #FF3E00;" data-color="#FF3E00"></div>
+            <div class="swatch" style="background: #FFD700;" data-color="#FFD700"></div>
+            <div class="swatch" style="background: #00CF91;" data-color="#00CF91"></div>
+            <div class="swatch" style="background: #007BFF;" data-color="#007BFF"></div>
+            <div class="swatch" style="background: #7000FF;" data-color="#7000FF"></div>
         </div>
         <div class="tool-bar">
             <button class="tool-item active" id="brush">🖌️</button>
@@ -57,7 +57,7 @@
 
 <script>
 const canvas = document.getElementById('tray');
-const ctx = canvas.getContext('2d');
+const ctx = canvas.getContext('2d', { alpha: false });
 let drops = [];
 let activeColor = "#111111";
 let activeTool = "brush";
@@ -73,6 +73,7 @@ window.addEventListener('resize', resize);
 resize();
 
 function addDrop(x, y, r, color) {
+    // Math: Incompressible fluid displacement
     drops.forEach(drop => {
         drop.vertices.forEach(v => {
             let dx = v.x - x;
@@ -83,9 +84,12 @@ function addDrop(x, y, r, color) {
             v.y = y + dy * m;
         });
     });
+
+    // High vertex density for "silk" effect
     let vertices = [];
-    for(let i=0; i<180; i++) {
-        let angle = (i/180) * Math.PI * 2;
+    const segments = 300; 
+    for(let i=0; i<segments; i++) {
+        let angle = (i/segments) * Math.PI * 2;
         vertices.push({ x: x + Math.cos(angle)*r, y: y + Math.sin(angle)*r });
     }
     drops.push({ color, vertices });
@@ -96,25 +100,42 @@ function applyTine(x, y, dx, dy, radius) {
         drop.vertices.forEach(v => {
             let distSq = (x - v.x)**2 + (y - v.y)**2;
             if (distSq < radius * radius) {
-                let force = Math.pow(1 - Math.sqrt(distSq) / radius, 2);
-                v.x += dx * force * 0.9;
-                v.y += dy * force * 0.9;
+                // Smooth falloff for fluid motion
+                let force = Math.pow(1 - Math.sqrt(distSq) / radius, 1.5);
+                v.x += dx * force * 0.95;
+                v.y += dy * force * 0.95;
             }
         });
     });
 }
 
 function render() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+
     drops.forEach(drop => {
         ctx.beginPath();
         ctx.fillStyle = drop.color;
-        drop.vertices.forEach((v, i) => {
-            if(i === 0) ctx.moveTo(v.x, v.y);
-            else ctx.lineTo(v.x, v.y);
-        });
-        ctx.closePath();
+        
+        const v = drop.vertices;
+        ctx.moveTo(v[0].x, v[0].y);
+        
+        // Use quadratic curves for organic fluidity
+        for (let i = 0; i < v.length; i++) {
+            let next = v[(i + 1) % v.length];
+            let midX = (v[i].x + next.x) / 2;
+            let midY = (v[i].y + next.y) / 2;
+            ctx.quadraticCurveTo(v[i].x, v[i].y, midX, midY);
+        }
+        
         ctx.fill();
+        // Subtle anti-aliasing stroke
+        ctx.strokeStyle = drop.color;
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
     });
     requestAnimationFrame(render);
 }
@@ -124,7 +145,7 @@ function handleStart(e) {
     isDragging = true;
     const pos = getPos(e);
     lastX = pos.x; lastY = pos.y;
-    if (activeTool === "brush") addDrop(pos.x, pos.y, 25, activeColor);
+    if (activeTool === "brush") addDrop(pos.x, pos.y, 35, activeColor);
 }
 
 function handleMove(e) {
@@ -133,17 +154,15 @@ function handleMove(e) {
     let dx = pos.x - lastX;
     let dy = pos.y - lastY;
     
-    // MEGA RAKE SETTINGS
     const traySize = canvas.width;
-    const numTines = 20; // Increased count
-    const spacing = traySize / (numTines + 2); // Spaced to cover ~90% of tray width
-    const tineRadius = 10; // Extra skinny for fine detail
+    const numTines = 22; 
+    const spacing = traySize / (numTines + 1);
+    const tineRadius = 14; 
 
     for (let i = -Math.floor(numTines/2); i <= Math.floor(numTines/2); i++) {
         let angle = Math.atan2(dy, dx) + Math.PI/2;
         let offsetX = Math.cos(angle) * (i * spacing);
         let offsetY = Math.sin(angle) * (i * spacing);
-        
         applyTine(pos.x + offsetX, pos.y + offsetY, dx, dy, tineRadius);
     }
     
