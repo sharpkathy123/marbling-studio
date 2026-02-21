@@ -2,195 +2,155 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Wooden Marbling Studio</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marbling Tray App</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; touch-action: none; }
-        
-        body { 
-            width: 100vw; height: 100dvh; 
-            background: #000;
-            display: flex; flex-direction: column;
-            overflow: hidden;
+        :root {
+            --bg-color: #f0f0f0;
+            --tray-color: #ffffff;
+            --ui-panel-size: 150px;
         }
 
-        /* The Wooden Boxes */
-        .wooden-box {
-            border: 8px solid #3d2b1f; /* "Frame" */
-            background-color: #5c4033; /* "Wood grain" base */
-            background-image: repeating-linear-gradient(45deg, rgba(0,0,0,0.05) 0px, rgba(0,0,0,0.05) 2px, transparent 2px, transparent 4px);
-            box-shadow: inset 0 0 15px rgba(0,0,0,0.5);
-            display: flex; align-items: center; justify-content: center;
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            display: flex;
+            background-color: var(--bg-color);
+            font-family: sans-serif;
         }
 
-        /* Top Box: The Tray */
-        #tray-box {
-            flex: 1; /* Takes up all available top space */
-            margin: 5px;
-            border-radius: 8px;
+        /* Main Container */
+        #app-container {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            flex-direction: row; /* Default layout */
         }
 
-        /* Bottom Box: The UI */
-        #ui-box {
-            flex: 0 0 auto; /* Height is determined by its buttons */
-            margin: 5px;
-            padding: 15px;
-            border-radius: 8px;
+        /* The Water Tray: Square and Max Size */
+        #tray-section {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #ddd; /* Contrast for the tray */
+            padding: 20px;
+        }
+
+        #water-tray {
+            width: 100%;
+            height: 100%;
+            max-width: calc(100vh - 40px);
+            max-height: calc(100vw - var(--ui-panel-size) - 40px);
+            aspect-ratio: 1 / 1;
+            background: var(--tray-color);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border-radius: 4px;
+            cursor: crosshair;
+            border: 2px solid #ccc;
+        }
+
+        /* Sidebar for Tools */
+        #toolbox {
+            width: var(--ui-panel-size);
+            background: white;
+            border-left: 1px solid #ccc;
+            display: flex;
             flex-direction: column;
+            padding: 20px;
+            gap: 30px;
+            align-items: center;
+        }
+
+        .tool-group { text-align: center; }
+
+        /* Color Palette */
+        #palette {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 10px;
         }
 
-        canvas { 
-            background: #fdfaf0; 
-            display: block; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.8);
+        .swatch {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            cursor: pointer;
         }
+        .swatch.active { border-color: #333; }
 
-        .row { display: flex; width: 100%; gap: 10px; }
-        
-        .swatch { width: 35px; height: 35px; border-radius: 4px; border: 2px solid #222; }
-        .swatch.active { border-color: #ffd700; transform: scale(1.1); }
-
-        button { 
-            flex: 1; padding: 12px 0; border: none; border-radius: 4px; 
-            background: #8b5a2b; color: #fff; font-size: 12px; font-weight: bold;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+        /* Icons for Brush and Comb */
+        .icon-btn {
+            font-size: 2rem;
+            background: none;
+            border: 1px solid #eee;
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.2s;
         }
-        button.active { background: #ffd700; color: #000; }
-        
-        input[type="range"] { flex: 1; accent-color: #ffd700; }
+        .icon-btn:hover { background: #f9f9f9; }
+        .icon-btn.active { background: #e0f0ff; border-color: #007bff; }
+
+        /* Responsive: Stack vertically on small screens */
+        @media (max-width: 600px) {
+            #app-container { flex-direction: column; }
+            #toolbox { width: 100%; height: auto; border-left: none; border-top: 1px solid #ccc; flex-direction: row; justify-content: space-around; }
+        }
     </style>
 </head>
 <body>
 
-<div id="tray-box" class="wooden-box">
-    <canvas id="mCanvas"></canvas>
-</div>
-
-<div id="ui-box" class="wooden-box">
-    <div class="row">
-        <div class="swatch active" style="background:#8b0000" data-color="#8b0000"></div>
-        <div class="swatch" style="background:#003366" data-color="#003366"></div>
-        <div class="swatch" style="background:#ccac00" data-color="#ccac00"></div>
-        <div class="swatch" style="background:#224422" data-color="#224422"></div>
-        <input type="range" id="size" min="0.1" max="3.0" step="0.1" value="1.0">
+<div id="app-container">
+    <div id="tray-section">
+        <canvas id="water-tray"></canvas>
     </div>
 
-    <div class="row">
-        <button id="btnDrop" class="active">Drop</button>
-        <button id="btnNeedle">Needle</button>
-        <button id="btnRake">Rake</button>
-        <button id="btnSave" style="background:#3d5c33">Save</button>
-    </div>
+    <aside id="toolbox">
+        <div class="tool-group">
+            <p><strong>Palette</strong></p>
+            <div id="palette">
+                <div class="swatch active" style="background: #FF595E;"></div>
+                <div class="swatch" style="background: #FFCA3A;"></div>
+                <div class="swatch" style="background: #8AC926;"></div>
+                <div class="swatch" style="background: #1982C4;"></div>
+                <div class="swatch" style="background: #6A4C93;"></div>
+                <div class="swatch" style="background: #000000;"></div>
+            </div>
+        </div>
+
+        <div class="tool-group">
+            <p><strong>Brush</strong></p>
+            <button class="icon-btn active" title="Paintbrush">🖌️</button>
+        </div>
+
+        <div class="tool-group">
+            <p><strong>Comb</strong></p>
+            <button class="icon-btn" title="Comb">🪮</button>
+        </div>
+    </aside>
 </div>
 
-<script type="importmap">{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }</script>
-<script type="module">
-import * as THREE from 'three';
+<script>
+    // Placeholder for interaction logic
+    const swatches = document.querySelectorAll('.swatch');
+    swatches.forEach(s => {
+        s.addEventListener('click', () => {
+            document.querySelector('.swatch.active').classList.remove('active');
+            s.classList.add('active');
+        });
+    });
 
-const fragmentShader = `
-    uniform sampler2D tPrev; uniform vec2 uMouse; uniform vec2 uPrevMouse;
-    uniform int uMode; uniform vec3 uColor; uniform float uSize;
-    varying vec2 vUv;
-    void main() {
-        vec2 uv = vUv; vec3 paper = vec3(0.99, 0.98, 0.94);
-        if (uMode == 0) {
-            float d = distance(uv, uMouse); float r = 0.05 * uSize;
-            if (d > 0.0001) { float m = sqrt(1.0 + (r*r)/(d*d)); uv = uMouse + (uv - uMouse)/m; }
-            vec4 b = texture2D(tPrev, uv); if(b.a < 0.1) b = vec4(paper, 1.0);
-            gl_FragColor = (d < r) ? vec4(uColor, 1.0) : b;
-        } else if (uMode > 0) {
-            vec2 dir = uMouse - uPrevMouse; vec2 advUv = uv;
-            float d = distance(uv, uMouse); 
-            float inf = exp(-d / (uMode == 1 ? 0.01 : 0.03) * uSize);
-            advUv -= dir * inf;
-            vec4 s = texture2D(tPrev, advUv); gl_FragColor = (s.a < 0.1) ? vec4(paper, 1.0) : s;
-        } else {
-            vec4 c = texture2D(tPrev, uv); gl_FragColor = (c.a < 0.1) ? vec4(paper, 1.0) : c;
-        }
-    }
-`;
-
-const canvas = document.getElementById('mCanvas');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
-let tSize, read, write, activeColor = "#8b0000", activeMode = 0, drawing = false;
-
-const scene = new THREE.Scene(), camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-const material = new THREE.ShaderMaterial({
-    uniforms: { tPrev: { value: null }, uMouse: { value: new THREE.Vector2(-1,-1) }, uPrevMouse: { value: new THREE.Vector2(-1,-1) }, uMode: { value: -1 }, uColor: { value: new THREE.Color() }, uSize: { value: 1.0 } },
-    vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position, 1.0); }`,
-    fragmentShader
-});
-scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
-
-function init() {
-    const area = document.getElementById('tray-box');
-    tSize = Math.min(area.clientWidth, area.clientHeight) - 30;
-    renderer.setSize(tSize, tSize);
-    read = new THREE.WebGLRenderTarget(tSize, tSize);
-    write = new THREE.WebGLRenderTarget(tSize, tSize);
-    material.uniforms.tPrev.value = read.texture;
-    renderer.setClearColor(0xfdfaf0, 1);
-    [read, write].forEach(rt => { renderer.setRenderTarget(rt); renderer.clear(); });
-    renderer.setRenderTarget(null);
-}
-
-function animate() {
-    requestAnimationFrame(animate);
-    material.uniforms.uSize.value = parseFloat(document.getElementById('size').value);
-    if (material.uniforms.uMode.value !== -1) {
-        renderer.setRenderTarget(write); renderer.render(scene, camera);
-        material.uniforms.tPrev.value = write.texture;
-        [read, write] = [write, read];
-        renderer.setRenderTarget(null);
-    }
-    renderer.render(scene, camera);
-}
-
-const getMouse = (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const cx = e.touches ? e.touches[0].clientX : e.clientX;
-    const cy = e.touches ? e.touches[0].clientY : e.clientY;
-    return new THREE.Vector2((cx - rect.left)/tSize, 1 - (cy - rect.top)/tSize);
-};
-
-window.addEventListener('touchstart', (e) => {
-    if (e.target.closest('#ui-box')) return;
-    const pos = getMouse(e);
-    material.uniforms.uMouse.value.copy(pos); material.uniforms.uPrevMouse.value.copy(pos);
-    material.uniforms.uMode.value = activeMode; material.uniforms.uColor.value.set(activeColor);
-    drawing = true;
-}, {passive: false});
-
-window.addEventListener('touchmove', (e) => {
-    if (!drawing) return;
-    material.uniforms.uPrevMouse.value.copy(material.uniforms.uMouse.value);
-    material.uniforms.uMouse.value.copy(getMouse(e));
-}, {passive: false});
-
-window.addEventListener('touchend', () => { drawing = false; material.uniforms.uMode.value = -1; });
-
-document.querySelectorAll('.swatch').forEach(sw => {
-    sw.onclick = () => {
-        document.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
-        sw.classList.add('active'); activeColor = sw.dataset.color;
-    };
-});
-
-document.getElementById('btnDrop').onclick = () => { activeMode = 0; upd(0); };
-document.getElementById('btnNeedle').onclick = () => { activeMode = 1; upd(1); };
-document.getElementById('btnRake').onclick = () => { activeMode = 2; upd(2); };
-document.getElementById('btnSave').onclick = () => {
-    const link = document.createElement('a'); link.download = 'art.png'; link.href = canvas.toDataURL(); link.click();
-};
-
-function upd(m) {
-    ['btnDrop', 'btnNeedle', 'btnRake'].forEach((id, i) => document.getElementById(id).classList.toggle('active', i === m));
-}
-
-window.addEventListener('resize', init);
-init();
-animate();
+    const buttons = document.querySelectorAll('.icon-btn');
+    buttons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelector('.icon-btn.active').classList.remove('active');
+            btn.classList.add('active');
+        });
+    });
 </script>
+
 </body>
 </html>
