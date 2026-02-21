@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Marbling Split Studio</title>
+    <title>Functional Marbling Studio</title>
     <style>
         :root {
             --red-zone: #FF4D4D;
             --blue-zone: #4D79FF;
             --tray-color: #ffffff;
+            --selected-color: #000000;
         }
 
         body, html {
@@ -17,7 +18,7 @@
             width: 100vw;
             height: 100vh;
             overflow: hidden;
-            font-family: sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
         #app-wrapper {
@@ -26,31 +27,87 @@
             height: 100%;
         }
 
-        /* Responsive Layout Logic */
         @media (orientation: landscape) {
             #app-wrapper { flex-direction: row; }
             #tool-dock { width: 50%; height: 100%; }
-            #work-zone { width: 50%; height: 100%; }
+            #work-zone { width: 50%; height: 100%; border-left: 4px solid rgba(0,0,0,0.1); }
         }
 
         @media (orientation: portrait) {
             #app-wrapper { flex-direction: column; }
             #tool-dock { width: 100%; height: 50%; }
-            #work-zone { width: 100%; height: 50%; }
+            #work-zone { width: 100%; height: 50%; border-top: 4px solid rgba(0,0,0,0.1); }
         }
 
-        /* RED SIDE: THE DOCK */
+        /* RED ZONE: TOOLS */
         #tool-dock {
             background-color: var(--red-zone);
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            gap: 20px;
-            color: white;
+            gap: 30px;
         }
 
-        /* BLUE SIDE: THE TRAY AREA */
+        .palette {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            border-radius: 20px;
+        }
+
+        .swatch {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            border: 3px solid white;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .swatch.active {
+            transform: scale(1.2);
+            border-color: #333;
+            box-shadow: 0 0 15px rgba(255,255,255,0.5);
+        }
+
+        .tool-bar {
+            display: flex;
+            gap: 20px;
+        }
+
+        .tool-item {
+            background: white;
+            border: none;
+            width: 80px;
+            height: 80px;
+            font-size: 2rem;
+            border-radius: 15px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .tool-item.active {
+            background: #333;
+            color: white;
+            transform: translateY(-5px);
+        }
+
+        .brush-tip {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--selected-color);
+            margin-top: 5px;
+        }
+
+        /* BLUE ZONE: THE WATER */
         #work-zone {
             background-color: var(--blue-zone);
             display: flex;
@@ -58,82 +115,88 @@
             align-items: center;
         }
 
-        /* THE WATER TRAY (SQUARE) */
         #water-tray {
             background: var(--tray-color);
-            /* Fits perfectly inside the 50% split */
-            width: min(80%, 80% * (height / width)); 
-            height: auto;
+            width: min(85%, 85% * (height / width));
             aspect-ratio: 1 / 1;
             max-width: 90%;
             max-height: 90%;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            border-radius: 4px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+            border-radius: 8px;
+            cursor: crosshair;
         }
-
-        /* UI ELEMENTS */
-        .palette {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            background: rgba(255,255,255,0.2);
-            padding: 15px;
-            border-radius: 15px;
-        }
-
-        .swatch {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            border: 3px solid white;
-            cursor: pointer;
-        }
-
-        .tool-bar {
-            display: flex;
-            gap: 15px;
-        }
-
-        .tool-item {
-            background: white;
-            border: none;
-            padding: 15px;
-            font-size: 1.5rem;
-            border-radius: 12px;
-            cursor: pointer;
-            box-shadow: 0 4px 0 #cc0000;
-        }
-
-        .tool-item:active {
-            transform: translateY(4px);
-            box-shadow: none;
-        }
-
     </style>
 </head>
 <body>
 
 <div id="app-wrapper">
     <div id="tool-dock">
-        <div class="palette">
-            <div class="swatch" style="background: #000;"></div>
-            <div class="swatch" style="background: #fff;"></div>
-            <div class="swatch" style="background: #FFD700;"></div>
-            <div class="swatch" style="background: #FF69B4;"></div>
-            <div class="swatch" style="background: #00FF7F;"></div>
-            <div class="swatch" style="background: #4B0082;"></div>
+        <div class="palette" id="palette">
+            <div class="swatch active" style="background: #000000;" data-color="#000000"></div>
+            <div class="swatch" style="background: #ffffff;" data-color="#ffffff"></div>
+            <div class="swatch" style="background: #FFD700;" data-color="#FFD700"></div>
+            <div class="swatch" style="background: #FF1493;" data-color="#FF1493"></div>
+            <div class="swatch" style="background: #00FFCC;" data-color="#00FFCC"></div>
+            <div class="swatch" style="background: #8A2BE2;" data-color="#8A2BE2"></div>
         </div>
+
         <div class="tool-bar">
-            <button class="tool-item" title="Paintbrush">🖌️</button>
-            <button class="tool-item" title="Comb">🪮</button>
+            <button class="tool-item active" id="brush-tool">
+                🖌️
+                <div class="brush-tip" id="brush-indicator"></div>
+            </button>
+            <button class="tool-item" id="comb-tool">🪮</button>
         </div>
-        <p><strong>TOOL DOCK</strong></p>
     </div>
 
     <div id="work-zone">
         <canvas id="water-tray"></canvas>
     </div>
 </div>
+
+<script>
+    const canvas = document.getElementById('water-tray');
+    const brushTool = document.getElementById('brush-tool');
+    const combTool = document.getElementById('comb-tool');
+    const brushIndicator = document.getElementById('brush-indicator');
+    const swatches = document.querySelectorAll('.swatch');
+
+    let activeColor = "#000000";
+    let activeTool = "brush";
+
+    // Handle Color Selection
+    swatches.forEach(swatch => {
+        swatch.addEventListener('click', () => {
+            document.querySelector('.swatch.active').classList.remove('active');
+            swatch.classList.add('active');
+            activeColor = swatch.getAttribute('data-color');
+            brushIndicator.style.backgroundColor = activeColor;
+        });
+    });
+
+    // Handle Tool Selection
+    brushTool.addEventListener('click', () => {
+        activeTool = "brush";
+        brushTool.classList.add('active');
+        combTool.classList.remove('active');
+    });
+
+    combTool.addEventListener('click', () => {
+        activeTool = "comb";
+        combTool.classList.add('active');
+        brushTool.classList.remove('active');
+    });
+
+    // Simple interaction feedback (Visual only for now)
+    canvas.addEventListener('mousedown', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        console.log(`Using ${activeTool} with ${activeColor} at ${x}, ${y}`);
+        // You would trigger the fluid simulation math here
+    });
+</script>
 
 </body>
 </html>
