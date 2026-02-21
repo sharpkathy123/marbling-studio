@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Split Screen App</title>
+    <title>Dynamic Split App</title>
     <style>
-        /* Reset and lock viewport */
         body, html {
             margin: 0;
             padding: 0;
@@ -14,18 +13,29 @@
             overflow: hidden;
         }
 
-        /* The background split */
-        .split-rectangle {
+        .split-screen {
             width: 100%;
             height: 100%;
-            /* Creates a hard line at 50% */
-            background: linear-gradient(to right, #FF0000 50%, #0000FF 50%);
+        }
+
+        /* LANDSCAPE: Width is the longest dimension. Split it vertically. */
+        @media (orientation: landscape) {
+            .split-screen {
+                background: linear-gradient(to right, #FF0000 50%, #0000FF 50%);
+            }
+        }
+
+        /* PORTRAIT: Height is the longest dimension. Split it horizontally. */
+        @media (orientation: portrait) {
+            .split-screen {
+                background: linear-gradient(to bottom, #FF0000 50%, #0000FF 50%);
+            }
         }
     </style>
 </head>
 <body>
 
-    <div class="split-rectangle"></div>
+    <div class="split-screen"></div>
 
 </body>
 </html>
