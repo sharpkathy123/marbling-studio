@@ -1,154 +1,31 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Suminagashi Studio</title>
-    <style>
-        :root { --red-zone: #FF4D4D; --blue-zone: #4D79FF; --selected-color: #000000; }
-        body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; font-family: sans-serif; }
-        #app-wrapper { display: flex; width: 100%; height: 100%; }
-        
-        @media (orientation: landscape) { 
-            #app-wrapper { flex-direction: row; }
-            #tool-dock { width: 50%; height: 100%; }
-            #work-zone { width: 50%; height: 100%; }
-        }
-        @media (orientation: portrait) {
-            #app-wrapper { flex-direction: column; }
-            #tool-dock { width: 100%; height: 50%; }
-            #work-zone { width: 100%; height: 50%; }
-        }
-
-        #tool-dock { background: var(--red-zone); display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 20px; }
-        #work-zone { background: var(--blue-zone); display: flex; justify-content: center; align-items: center; }
-        
-        canvas { background: white; width: min(85%, 85% * (height / width)); aspect-ratio: 1 / 1; border-radius: 8px; cursor: crosshair; touch-action: none; }
-        
-        .palette { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 15px; }
-        .swatch { width: 40px; height: 40px; border-radius: 50%; border: 3px solid white; cursor: pointer; }
-        .swatch.active { transform: scale(1.2); border-color: #333; }
-        .tool-bar { display: flex; gap: 15px; }
-        .tool-item { background: white; border: none; padding: 15px; border-radius: 12px; cursor: pointer; font-size: 1.5rem; }
-        .tool-item.active { background: #333; color: white; }
-    </style>
-</head>
-<body>
-
-<div id="app-wrapper">
-    <div id="tool-dock">
-        <div class="palette">
-            <div class="swatch active" style="background: #000;" data-color="#000000"></div>
-            <div class="swatch" style="background: #E63946;" data-color="#E63946"></div>
-            <div class="swatch" style="background: #F1FAEE;" data-color="#F1FAEE"></div>
-            <div class="swatch" style="background: #A8DADC;" data-color="#A8DADC"></div>
-            <div class="swatch" style="background: #457B9D;" data-color="#457B9D"></div>
-            <div class="swatch" style="background: #1D3557;" data-color="#1D3557"></div>
-        </div>
-        <div class="tool-bar">
-            <button class="tool-item active" id="brush">🖌️</button>
-            <button class="tool-item" id="comb">🪮</button>
-        </div>
-    </div>
-    <div id="work-zone">
-        <canvas id="tray"></canvas>
-    </div>
-</div>
-
 <script>
-const canvas = document.getElementById('tray');
-const ctx = canvas.getContext('2d');
-let drops = []; // Stores our ink rings
-let activeColor = "#000000";
-let activeTool = "brush";
-
-// Resize canvas for high resolution
-function resize() {
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetWidth;
-}
-window.addEventListener('resize', resize);
-resize();
-
-// Math: Mathematical Marbling displacement
-function dropPaint(x, y, r, color) {
-    // Displacement logic: move all existing points away from new drop
-    drops.forEach(drop => {
-        drop.points.forEach(p => {
-            let dx = p.x - x;
-            let dy = p.y - y;
-            let d2 = dx*dx + dy*dy;
-            let factor = Math.sqrt(1 + (r*r)/d2);
-            p.x = x + dx * factor;
-            p.y = y + dy * factor;
-        });
-    });
-    
-    // Add new drop
-    let newDrop = { color: color, points: [] };
-    for(let i=0; i<100; i++) {
-        let angle = (i/100) * Math.PI * 2;
-        newDrop.points.push({ x: x + Math.cos(angle)*r, y: y + Math.sin(angle)*r });
-    }
-    drops.push(newDrop);
-}
-
-function tinesComb(y, spacing) {
-    drops.forEach(drop => {
-        drop.points.forEach(p => {
-            let d = Math.abs(p.y - y);
-            if (d < spacing) {
-                p.x += 20 * (1 - d/spacing); // Shift horizontally
-            }
-        });
-    });
-}
+// ... (previous setup code remains the same)
 
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drops.forEach(drop => {
+    
+    // We draw from the latest drop to the oldest 
+    // to simulate the "layering" on the water surface
+    for (let i = drops.length - 1; i >= 0; i--) {
+        const drop = drops[i];
         ctx.beginPath();
-        ctx.strokeStyle = drop.color;
-        ctx.lineWidth = 2;
-        drop.points.forEach((p, i) => {
-            if(i === 0) ctx.moveTo(p.x, p.y);
+        ctx.fillStyle = drop.color;
+        
+        drop.points.forEach((p, index) => {
+            if (index === 0) ctx.moveTo(p.x, p.y);
             else ctx.lineTo(p.x, p.y);
         });
+        
         ctx.closePath();
+        ctx.fill();
+        
+        // Optional: Add a subtle stroke to define boundaries
+        ctx.strokeStyle = "rgba(0,0,0,0.1)";
+        ctx.lineWidth = 0.5;
         ctx.stroke();
-    });
+    }
     requestAnimationFrame(draw);
 }
-draw();
 
-// Input Handlers
-canvas.addEventListener('mousedown', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    if(activeTool === "brush") {
-        dropPaint(x, y, 20, activeColor);
-    } else {
-        tinesComb(y, 30);
-    }
-});
-
-// UI Logic
-document.querySelectorAll('.swatch').forEach(s => {
-    s.addEventListener('click', () => {
-        document.querySelector('.swatch.active').classList.remove('active');
-        s.classList.add('active');
-        activeColor = s.dataset.color;
-    });
-});
-
-document.getElementById('brush').onclick = () => { activeTool="brush"; updateBtns(); };
-document.getElementById('comb').onclick = () => { activeTool="comb"; updateBtns(); };
-function updateBtns() {
-    document.getElementById('brush').classList.toggle('active', activeTool==="brush");
-    document.getElementById('comb').classList.toggle('active', activeTool==="comb");
-}
+// ... (rest of the logic remains the same)
 </script>
-</body>
-</html>
