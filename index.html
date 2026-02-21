@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Suminagashi Fluid Resampling</title>
+    <title>Fluid Resampling Marbler</title>
     <style>
         :root { --red-zone: #FF4D4D; --blue-zone: #4D79FF; }
-        body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; font-family: sans-serif; background: #1a1a1a; }
+        body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; font-family: sans-serif; background: #111; }
         #app-wrapper { display: flex; width: 100%; height: 100%; }
         
         @media (orientation: landscape) { 
@@ -43,7 +43,7 @@
             <div class="swatch" style="background: #FFB703;" data-color="#FFB703"></div>
             <div class="swatch" style="background: #8ECAE6;" data-color="#8ECAE6"></div>
             <div class="swatch" style="background: #219EBC;" data-color="#219EBC"></div>
-            <div class="swatch" style="background: #FB8500;" data-color="#FB8500"></div>
+            <div class="swatch" style="background: #023047;" data-color="#023047"></div>
         </div>
         <div class="tool-bar">
             <button class="tool-item active" id="brush">🖌️</button>
@@ -71,10 +71,10 @@ window.addEventListener('resize', resize);
 resize();
 
 function addDrop(x, y, r, color) {
+    // Standard displacement math
     drops.forEach(drop => {
         drop.vertices.forEach(v => {
-            let dx = v.x - x;
-            let dy = v.y - y;
+            let dx = v.x - x, dy = v.y - y;
             let d2 = dx*dx + dy*dy;
             let m = Math.sqrt(1 + (r*r)/d2);
             v.x = x + dx * m;
@@ -90,9 +90,9 @@ function addDrop(x, y, r, color) {
     drops.push({ color, vertices });
 }
 
-// THE FIX: Dynamic Subdivision
+// THE FIX: Dynamic Resampling
 function resample(drop) {
-    const threshold = 6; // Max distance between points before splitting
+    const threshold = 5; // Points must be closer than this
     const newVertices = [];
     for (let i = 0; i < drop.vertices.length; i++) {
         let v1 = drop.vertices[i];
@@ -101,6 +101,7 @@ function resample(drop) {
         
         let dist = Math.hypot(v1.x - v2.x, v1.y - v2.y);
         if (dist > threshold) {
+            // Inject a midpoint to maintain fluid resolution
             newVertices.push({ x: (v1.x + v2.x)/2, y: (v1.y + v2.y)/2 });
         }
     }
@@ -109,8 +110,8 @@ function resample(drop) {
 
 function autoSweep(edge) {
     const traySize = canvas.width;
-    const steps = 50;
-    const numTines = 25;
+    const steps = 60;
+    const numTines = 28;
     const spacing = traySize / (numTines + 1);
     const radius = 10;
     let step = 0;
@@ -118,30 +119,31 @@ function autoSweep(edge) {
     function animate() {
         if (step >= steps) return;
         let pos = (step / steps) * traySize;
-        if (edge === 'right') pos = traySize - pos;
-        if (edge === 'bottom') pos = traySize - pos;
+        if (edge === 'right' || edge === 'bottom') pos = traySize - pos;
 
         drops.forEach(drop => {
-            let changed = false;
+            let moved = false;
             drop.vertices.forEach(v => {
                 let dist, dx = 0, dy = 0;
+                let speed = traySize / steps;
                 
                 if (edge === 'left' || edge === 'right') {
                     dist = Math.abs(v.x - pos);
-                    dx = (edge === 'left' ? 1 : -1) * (traySize / steps);
+                    dx = (edge === 'left' ? 1 : -1) * speed;
                 } else {
                     dist = Math.abs(v.y - pos);
-                    dy = (edge === 'top' ? 1 : -1) * (traySize / steps);
+                    dy = (edge === 'top' ? 1 : -1) * speed;
                 }
 
                 if (dist < radius) {
                     let force = Math.pow(1 - dist / radius, 2);
                     v.x += dx * force;
                     v.y += dy * force;
-                    changed = true;
+                    moved = true;
                 }
             });
-            if (changed) resample(drop);
+            // If the rake touched this drop, subdivide any stretched edges
+            if (moved) resample(drop);
         });
         step++;
         requestAnimationFrame(animate);
@@ -155,7 +157,7 @@ function render() {
     drops.forEach(drop => {
         ctx.beginPath();
         ctx.fillStyle = drop.color;
-        // Use smooth Bezier paths for fluidity
+        // Use Quadratic Curves for organic edges
         for (let i = 0; i < drop.vertices.length; i++) {
             let v = drop.vertices[i];
             let vNext = drop.vertices[(i + 1) % drop.vertices.length];
@@ -172,13 +174,10 @@ render();
 
 canvas.addEventListener('mousedown', (e) => {
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const x = e.clientX - rect.left, y = e.clientY - rect.top;
     const margin = 50;
-
-    if (activeTool === "brush") {
-        addDrop(x, y, 30, activeColor);
-    } else {
+    if (activeTool === "brush") addDrop(x, y, 30, activeColor);
+    else {
         if (x < margin) autoSweep('left');
         else if (x > canvas.width - margin) autoSweep('right');
         else if (y < margin) autoSweep('top');
