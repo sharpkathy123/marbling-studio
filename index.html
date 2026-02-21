@@ -3,61 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Suminagashi Columnar Studio</title>
+    <title>Professional Suminagashi Studio</title>
     <style>
-        :root { --red-zone: #E63946; --blue-zone: #457B9D; --navy: #1D3557; }
-        body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #000; }
-        #app-wrapper { display: flex; width: 100%; height: 100%; }
+        :root { 
+            --accent: #E63946; 
+            --bg-dark: #111; 
+            --sidebar: #1d1d1d;
+            --navy: #1D3557; 
+            --ui-white: #F1FAEE;
+        }
         
-        /* The Columnar Tool Dock */
+        body, html { 
+            margin: 0; padding: 0; width: 100vw; height: 100vh; 
+            overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: var(--bg-dark); color: white;
+        }
+
+        #app-wrapper { display: flex; width: 100%; height: 100%; }
+
+        /* Sidebar UI */
         #tool-dock { 
-            background: var(--red-zone); 
+            background: var(--sidebar); 
             display: flex; 
             flex-direction: column; 
+            width: 280px; 
+            padding: 30px 20px; 
+            gap: 30px; 
+            border-right: 1px solid #333;
+            box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+        }
+
+        #work-zone { 
+            flex-grow: 1; 
+            display: flex; 
             justify-content: center; 
             align-items: center; 
-            width: 300px; 
-            gap: 25px; 
-            padding: 20px;
-            box-shadow: 10px 0 30px rgba(0,0,0,0.3); 
-            z-index: 10; 
+            background: #222;
+            background-image: radial-gradient(#333 1px, transparent 1px);
+            background-size: 20px 20px;
         }
 
-        #work-zone { background: var(--blue-zone); display: flex; justify-content: center; align-items: center; flex-grow: 1; }
-        
         @media (orientation: portrait) { 
             #app-wrapper { flex-direction: column; } 
-            #tool-dock { width: 100%; height: 40%; padding: 10px; } 
+            #tool-dock { width: 100%; height: auto; padding: 15px; border-right: none; border-bottom: 1px solid #333; } 
         }
 
-        canvas { background: white; width: min(90%, 90% * (height / width)); aspect-ratio: 1 / 1; border-radius: 4px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); touch-action: none; }
-        
-        /* UI Groups */
-        .ui-group { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; }
-        
-        .palette { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: rgba(0,0,0,0.15); padding: 15px; border-radius: 15px; }
-        .swatch { width: 40px; height: 40px; border-radius: 50%; border: 3px solid white; cursor: pointer; transition: 0.2s; }
-        .swatch.active { transform: scale(1.2); border-color: var(--navy); }
-        
-        .tool-bar { display: flex; gap: 15px; }
-        .tool-item { background: white; border: none; padding: 15px; border-radius: 12px; cursor: pointer; font-size: 1.5rem; transition: 0.2s; width: 60px; }
-        .tool-item.active { background: var(--navy); color: white; transform: translateY(-3px); }
-        
-        .action-column { display: flex; flex-direction: column; gap: 10px; width: 80%; }
-        .btn { 
-            background: var(--navy); 
-            color: white; 
-            border: none; 
-            padding: 12px; 
-            border-radius: 10px; 
-            cursor: pointer; 
-            font-weight: bold; 
-            text-transform: uppercase; 
-            letter-spacing: 1px;
-            transition: 0.2s;
+        canvas { 
+            background: white; 
+            width: min(90%, 90% * (height / width)); 
+            aspect-ratio: 1 / 1; 
+            border-radius: 4px; 
+            box-shadow: 0 30px 80px rgba(0,0,0,0.8); 
+            touch-action: none; 
         }
-        .btn:hover { background: #2a4d7d; }
-        .btn-secondary { background: rgba(0,0,0,0.25); }
+
+        /* Groups */
+        .group-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 2px; color: #888; margin-bottom: 10px; }
+        .ui-group { display: flex; flex-direction: column; }
+
+        .palette { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        .swatch { 
+            width: 100%; aspect-ratio: 1; border-radius: 50%; 
+            border: 3px solid transparent; cursor: pointer; transition: 0.2s; 
+        }
+        .swatch.active { border-color: white; transform: scale(1.1); box-shadow: 0 0 15px rgba(255,255,255,0.3); }
+
+        .tool-bar { display: flex; gap: 10px; }
+        .tool-item { 
+            flex: 1; background: #333; border: none; padding: 15px; 
+            border-radius: 12px; cursor: pointer; font-size: 1.5rem; transition: 0.2s; 
+        }
+        .tool-item.active { background: var(--accent); color: white; }
+
+        .action-column { display: flex; flex-direction: column; gap: 8px; }
+        .btn { 
+            background: var(--navy); color: white; border: none; padding: 12px; 
+            border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; 
+        }
+        .btn:hover { filter: brightness(1.2); }
+        .btn-secondary { background: #444; }
     </style>
 </head>
 <body>
@@ -65,33 +89,38 @@
 <div id="app-wrapper">
     <div id="tool-dock">
         <div class="ui-group">
+            <div class="group-label">Pigment</div>
             <div class="palette">
                 <div class="swatch active" style="background: #1D3557;" data-color="#1D3557"></div>
                 <div class="swatch" style="background: #E63946;" data-color="#E63946"></div>
-                <div class="swatch" style="background: #F1FAEE;" data-color="#F1FAEE"></div>
-                <div class="swatch" style="background: #A8DADC;" data-color="#A8DADC"></div>
-                <div class="swatch" style="background: #457B9D;" data-color="#457B9D"></div>
                 <div class="swatch" style="background: #FFB703;" data-color="#FFB703"></div>
+                <div class="swatch" style="background: #0081A7;" data-color="#0081A7"></div>
+                <div class="swatch" style="background: #00AFB9;" data-color="#00AFB9"></div>
+                <div class="swatch" style="background: #F07167;" data-color="#F07167"></div>
             </div>
         </div>
 
         <div class="ui-group">
+            <div class="group-label">Equipment</div>
             <div class="tool-bar">
-                <button class="tool-item active" id="brush">🖌️</button>
-                <button class="tool-item" id="comb">🪮</button>
+                <button class="tool-item active" id="brush" title="Drop Paint">🖌️</button>
+                <button class="tool-item" id="comb" title="Edge Taps: Sweep Rake">🪮</button>
             </div>
         </div>
 
         <div class="ui-group">
+            <div class="group-label">Studio Actions</div>
             <div class="action-column">
-                <button class="btn" onclick="saveToHistory(); download()">💾 Save Design</button>
+                <button class="btn" onclick="download()">💾 Export PNG</button>
                 <button class="btn btn-secondary" onclick="undo()">↩️ Undo</button>
-                <button class="btn btn-secondary" onclick="clearTray()">🗑️ Clear Tray</button>
+                <button class="btn btn-secondary" onclick="clearTray()">🗑️ Reset</button>
             </div>
         </div>
     </div>
 
-    <div id="work-zone"><canvas id="tray"></canvas></div>
+    <div id="work-zone">
+        <canvas id="tray"></canvas>
+    </div>
 </div>
 
 <script>
@@ -110,16 +139,14 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-// History System
 function saveToHistory() {
-    if (history.length > 15) history.shift();
-    // Deep copy current drops
-    history.push(JSON.parse(JSON.stringify(drops)));
+    if (history.length > 20) history.shift();
+    history.push(JSON.stringify(drops));
 }
 
 function undo() {
     if (history.length > 0) {
-        drops = history.pop();
+        drops = JSON.parse(history.pop());
     }
 }
 
@@ -130,13 +157,14 @@ function clearTray() {
 
 function download() {
     const link = document.createElement('a');
-    link.download = 'my-marbling.png';
-    link.href = canvas.toDataURL();
+    link.download = 'marbling-art.png';
+    link.href = canvas.toDataURL('image/png');
     link.click();
 }
 
 function addDrop(x, y, r, color) {
     saveToHistory();
+    // Displacement math
     drops.forEach(drop => {
         drop.vertices.forEach(v => {
             let dx = v.x - x, dy = v.y - y;
@@ -145,22 +173,25 @@ function addDrop(x, y, r, color) {
             v.x = x + dx * m; v.y = y + dy * m;
         });
     });
+    // Create new drop with high vertex density
     let vts = [];
-    for(let i=0; i<180; i++) {
-        let a = (i/180) * Math.PI * 2;
+    const segments = 180;
+    for(let i=0; i<segments; i++) {
+        let a = (i/segments) * Math.PI * 2;
         vts.push({ x: x + Math.cos(a)*r, y: y + Math.sin(a)*r });
     }
     drops.push({ color, vertices: vts });
 }
 
 function resample(drop) {
-    const threshold = 10;
-    if (drop.vertices.length > 1500) return; 
+    const threshold = 7; 
+    const limit = 2500; 
+    if (drop.vertices.length > limit) return;
     const next = [];
     for (let i = 0; i < drop.vertices.length; i++) {
         let v1 = drop.vertices[i], v2 = drop.vertices[(i + 1) % drop.vertices.length];
         next.push(v1);
-        let dist = Math.sqrt((v1.x - v2.x)**2 + (v1.y - v2.y)**2);
+        let dist = Math.hypot(v1.x - v2.x, v1.y - v2.y);
         if (dist > threshold) {
             next.push({ x: (v1.x + v2.x)/2, y: (v1.y + v2.y)/2 });
         }
@@ -168,13 +199,31 @@ function resample(drop) {
     drop.vertices = next;
 }
 
+// Individual Needle Physics
+function applyTine(tx, ty, dx, dy, radius) {
+    drops.forEach(drop => {
+        let touched = false;
+        drop.vertices.forEach(v => {
+            let vx = v.x - tx, vy = v.y - ty;
+            let distSq = vx*vx + vy*vy;
+            if (distSq < radius * radius) {
+                // Gaussian pull toward needle movement
+                let force = Math.exp(-distSq / (radius * radius * 0.5));
+                v.x += dx * force * 1.2;
+                v.y += dy * force * 1.2;
+                touched = true;
+            }
+        });
+    });
+}
+
 function autoSweep(edge) {
     saveToHistory();
     const size = canvas.width;
-    const steps = 40;
-    const numTines = 24;
+    const steps = 60; 
+    const numTines = 20; 
     const spacing = size / (numTines + 1);
-    const radius = 15;
+    const radius = 12; // Individual needle radius
     let step = 0;
 
     function animate() {
@@ -182,26 +231,21 @@ function autoSweep(edge) {
         let pos = (step / steps) * size;
         if (edge === 'right' || edge === 'bottom') pos = size - pos;
 
-        drops.forEach(drop => {
-            let moved = false;
-            drop.vertices.forEach(v => {
-                let dist, dx = 0, dy = 0;
-                let speed = size / steps;
-                if (edge === 'left' || edge === 'right') {
-                    dist = Math.abs(v.x - pos);
-                    dx = (edge === 'left' ? 1.5 : -1.5) * speed;
-                } else {
-                    dist = Math.abs(v.y - pos);
-                    dy = (edge === 'top' ? 1.5 : -1.5) * speed;
-                }
-                if (dist < radius) {
-                    let force = Math.pow(1 - dist / radius, 1.5);
-                    v.x += dx * force; v.y += dy * force;
-                    moved = true;
-                }
-            });
-            if (moved && step % 3 === 0) resample(drop);
-        });
+        for (let j = 1; j <= numTines; j++) {
+            let tx, ty, dx = 0, dy = 0;
+            let move = size / steps;
+
+            if (edge === 'left' || edge === 'right') {
+                tx = pos; ty = j * spacing;
+                dx = (edge === 'left' ? 1 : -1) * move;
+            } else {
+                tx = j * spacing; ty = pos;
+                dy = (edge === 'top' ? 1 : -1) * move;
+            }
+            applyTine(tx, ty, dx, dy, radius);
+        }
+        
+        drops.forEach(drop => resample(drop));
         step++;
         requestAnimationFrame(animate);
     }
@@ -211,15 +255,18 @@ function autoSweep(edge) {
 function render() {
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
     drops.forEach(drop => {
         ctx.beginPath();
         ctx.fillStyle = drop.color;
         const v = drop.vertices;
         if (v.length < 3) return;
+        
+        // Smooth Quadratic pathing
         ctx.moveTo((v[0].x + v[v.length-1].x)/2, (v[0].y + v[v.length-1].y)/2);
         for (let i = 0; i < v.length; i++) {
-            let c = v[i], n = v[(i + 1) % v.length];
-            ctx.quadraticCurveTo(c.x, c.y, (c.x + n.x)/2, (c.y + n.y)/2);
+            let curr = v[i], next = v[(i + 1) % v.length];
+            ctx.quadraticCurveTo(curr.x, curr.y, (curr.x + next.x)/2, (curr.y + next.y)/2);
         }
         ctx.fill();
     });
@@ -228,18 +275,20 @@ function render() {
 render();
 
 canvas.addEventListener('mousedown', (e) => {
-    const r = canvas.getBoundingClientRect();
-    const x = e.clientX - r.left, y = e.clientY - r.top;
-    const m = 60;
-    if (activeTool === "brush") addDrop(x, y, 32, activeColor);
-    else {
-        if (x < m) autoSweep('left');
-        else if (x > canvas.width - m) autoSweep('right');
-        else if (y < m) autoSweep('top');
-        else if (y > canvas.height - m) autoSweep('bottom');
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left, y = e.clientY - rect.top;
+    const margin = 60;
+    if (activeTool === "brush") {
+        addDrop(x, y, 35, activeColor);
+    } else {
+        if (x < margin) autoSweep('left');
+        else if (x > canvas.width - margin) autoSweep('right');
+        else if (y < margin) autoSweep('top');
+        else if (y > canvas.height - margin) autoSweep('bottom');
     }
 });
 
+// Sidebar Controls
 document.querySelectorAll('.swatch').forEach(s => {
     s.onclick = () => {
         document.querySelector('.swatch.active').classList.remove('active');
@@ -249,6 +298,7 @@ document.querySelectorAll('.swatch').forEach(s => {
 });
 document.getElementById('brush').onclick = () => { activeTool="brush"; updateUI(); };
 document.getElementById('comb').onclick = () => { activeTool="comb"; updateUI(); };
+
 function updateUI() {
     document.getElementById('brush').className = activeTool === "brush" ? "tool-item active" : "tool-item";
     document.getElementById('comb').className = activeTool === "comb" ? "tool-item active" : "tool-item";
