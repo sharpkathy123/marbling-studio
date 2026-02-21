@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Suminagashi Studio</title>
+    <title>Suminagashi Drag Studio</title>
     <style>
         :root { --red-zone: #FF4D4D; --blue-zone: #4D79FF; }
         body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; font-family: sans-serif; }
@@ -29,8 +29,8 @@
         .swatch { width: 40px; height: 40px; border-radius: 50%; border: 3px solid white; cursor: pointer; }
         .swatch.active { transform: scale(1.2); border-color: #333; }
         .tool-bar { display: flex; gap: 15px; }
-        .tool-item { background: white; border: none; padding: 15px; border-radius: 12px; cursor: pointer; font-size: 1.5rem; transition: 0.2s; }
-        .tool-item.active { background: #333; color: white; transform: scale(1.1); }
+        .tool-item { background: white; border: none; padding: 15px; border-radius: 12px; cursor: pointer; font-size: 1.5rem; }
+        .tool-item.active { background: #333; color: white; }
     </style>
 </head>
 <body>
@@ -61,6 +61,9 @@ const ctx = canvas.getContext('2d');
 let drops = [];
 let activeColor = "#111111";
 let activeTool = "brush";
+let isDrawing = false;
+let lastX = 0;
+let lastY = 0;
 
 function resize() {
     const size = canvas.clientWidth;
@@ -71,7 +74,6 @@ window.addEventListener('resize', resize);
 resize();
 
 function addDrop(x, y, r, color) {
-    // 1. Displace existing points (The Math)
     drops.forEach(drop => {
         drop.vertices.forEach(v => {
             let dx = v.x - x;
@@ -83,29 +85,32 @@ function addDrop(x, y, r, color) {
         });
     });
 
-    // 2. Add new drop points
     let vertices = [];
-    for(let i=0; i<120; i++) {
-        let angle = (i/120) * Math.PI * 2;
+    for(let i=0; i<150; i++) {
+        let angle = (i/150) * Math.PI * 2;
         vertices.push({ x: x + Math.cos(angle)*r, y: y + Math.sin(angle)*r });
     }
     drops.push({ color, vertices });
 }
 
-function comb(y, strength) {
+// Fluid "Comb" Logic: Displace points in the direction of drag
+function combFluid(x, y, dx, dy) {
+    const radius = 40; // The reach of the comb
     drops.forEach(drop => {
         drop.vertices.forEach(v => {
-            let d = Math.abs(v.y - y);
-            // Move points horizontally based on proximity to the comb tine
-            v.x += (strength / (d/20 + 1));
+            let distSq = (x - v.x)**2 + (y - v.y)**2;
+            if (distSq < radius * radius) {
+                // Shift the point based on drag direction and proximity
+                let force = 1 - Math.sqrt(distSq) / radius;
+                v.x += dx * force;
+                v.y += dy * force;
+            }
         });
     });
 }
 
 function render() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw drops from oldest to newest
     drops.forEach(drop => {
         ctx.beginPath();
         ctx.fillStyle = drop.color;
@@ -115,29 +120,54 @@ function render() {
         });
         ctx.closePath();
         ctx.fill();
-        // Thin stroke to prevent color bleeding
-        ctx.strokeStyle = "rgba(0,0,0,0.05)";
-        ctx.lineWidth = 0.5;
-        ctx.stroke();
     });
     requestAnimationFrame(render);
 }
 render();
 
-// Interaction logic
-canvas.addEventListener('mousedown', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    if(activeTool === "brush") {
-        addDrop(x, y, 30, activeColor);
-    } else {
-        comb(y, 40);
-    }
-});
+// INPUT HANDLING
+function handleStart(e) {
+    isDrawing = true;
+    const pos = getPos(e);
+    lastX = pos.x;
+    lastY = pos.y;
+    if (activeTool === "brush") addDrop(pos.x, pos.y, 30, activeColor);
+}
 
-// UI Event Listeners
+function handleMove(e) {
+    if (!isDrawing || activeTool !== "comb") return;
+    const pos = getPos(e);
+    let dx = pos.x - lastX;
+    let dy = pos.y - lastY;
+    
+    // Create multiple "tines" for the comb
+    for (let i = -1; i <= 1; i++) {
+        // Offset tines perpendicular to drag direction
+        let offsetX = -dy * (i * 0.5); 
+        let offsetY = dx * (i * 0.5);
+        combFluid(pos.x + offsetX, pos.y + offsetY, dx, dy);
+    }
+    
+    lastX = pos.x;
+    lastY = pos.y;
+}
+
+function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: clientX - rect.left, y: clientY - rect.top };
+}
+
+canvas.addEventListener('mousedown', handleStart);
+canvas.addEventListener('mousemove', handleMove);
+window.addEventListener('mouseup', () => isDrawing = false);
+
+canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleStart(e); });
+canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handleMove(e); });
+window.addEventListener('touchend', () => isDrawing = false);
+
+// UI Logic
 document.querySelectorAll('.swatch').forEach(s => {
     s.onclick = () => {
         document.querySelector('.swatch.active').classList.remove('active');
@@ -145,10 +175,8 @@ document.querySelectorAll('.swatch').forEach(s => {
         activeColor = s.dataset.color;
     };
 });
-
 document.getElementById('brush').onclick = () => { activeTool="brush"; updateUI(); };
 document.getElementById('comb').onclick = () => { activeTool="comb"; updateUI(); };
-
 function updateUI() {
     document.getElementById('brush').className = activeTool === "brush" ? "tool-item active" : "tool-item";
     document.getElementById('comb').className = activeTool === "comb" ? "tool-item active" : "tool-item";
