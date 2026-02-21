@@ -3,22 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Suminagashi Pro Studio</title>
+    <title>High-End Marbling Studio</title>
     <style>
         :root { --red-zone: #FF4D4D; --blue-zone: #4D79FF; }
-        body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; font-family: sans-serif; background: #111; }
+        body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; font-family: 'Inter', sans-serif; background: #0f0f0f; }
         #app-wrapper { display: flex; width: 100%; height: 100%; }
-        @media (orientation: landscape) { #app-wrapper { flex-direction: row; } #tool-dock { width: 50%; height: 100%; } #work-zone { width: 50%; height: 100%; } }
-        @media (orientation: portrait) { #app-wrapper { flex-direction: column; } #tool-dock { width: 100%; height: 50%; } #work-zone { width: 100%; height: 50%; } }
-        #tool-dock { background: var(--red-zone); display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 20px; }
-        #work-zone { background: var(--blue-zone); display: flex; justify-content: center; align-items: center; }
-        canvas { background: white; width: min(90%, 90% * (height / width)); aspect-ratio: 1 / 1; border-radius: 4px; cursor: crosshair; touch-action: none; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .palette { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 15px; }
-        .swatch { width: 40px; height: 40px; border-radius: 50%; border: 3px solid white; cursor: pointer; transition: 0.2s; }
-        .swatch.active { transform: scale(1.2); border-color: #333; }
-        .tool-bar { display: flex; gap: 15px; }
-        .tool-item { background: white; border: none; padding: 15px; border-radius: 12px; cursor: pointer; font-size: 1.5rem; transition: 0.2s; }
-        .tool-item.active { background: #333; color: white; }
+        #tool-dock { background: var(--red-zone); display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 20px; box-shadow: 10px 0 30px rgba(0,0,0,0.2); z-index: 10; }
+        #work-zone { background: var(--blue-zone); display: flex; justify-content: center; align-items: center; flex-grow: 1; }
+        
+        @media (orientation: landscape) { #app-wrapper { flex-direction: row; } #tool-dock { width: 300px; height: 100%; } }
+        @media (orientation: portrait) { #app-wrapper { flex-direction: column; } #tool-dock { width: 100%; height: 35%; } }
+
+        canvas { background: #fff; width: min(92%, 92% * (height / width)); aspect-ratio: 1 / 1; border-radius: 2px; cursor: crosshair; touch-action: none; box-shadow: 0 30px 100px rgba(0,0,0,0.5); }
+        
+        .palette { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; background: rgba(0,0,0,0.15); padding: 20px; border-radius: 20px; }
+        .swatch { width: 45px; height: 45px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.8); cursor: pointer; transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .swatch.active { transform: scale(1.25); border-color: #fff; box-shadow: 0 0 15px rgba(255,255,255,0.4); }
+        .tool-bar { display: flex; gap: 20px; }
+        .tool-item { background: white; border: none; padding: 18px; border-radius: 15px; cursor: pointer; font-size: 1.8rem; transition: 0.2s; }
+        .tool-item.active { background: #111; color: white; transform: translateY(-3px); }
+        .btn-clear { background: rgba(0,0,0,0.3); color: white; border: none; padding: 10px 20px; border-radius: 50px; cursor: pointer; font-weight: bold; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -26,17 +30,18 @@
 <div id="app-wrapper">
     <div id="tool-dock">
         <div class="palette">
-            <div class="swatch active" style="background: #111;" data-color="#111111"></div>
+            <div class="swatch active" style="background: #1A1A1A;" data-color="#1A1A1A"></div>
             <div class="swatch" style="background: #E63946;" data-color="#E63946"></div>
             <div class="swatch" style="background: #FFB703;" data-color="#FFB703"></div>
-            <div class="swatch" style="background: #8ECAE6;" data-color="#8ECAE6"></div>
+            <div class="swatch" style="background: #FB8500;" data-color="#FB8500"></div>
             <div class="swatch" style="background: #219EBC;" data-color="#219EBC"></div>
-            <div class="swatch" style="background: #023047;" data-color="#023047"></div>
+            <div class="swatch" style="background: #8ECAE6;" data-color="#8ECAE6"></div>
         </div>
         <div class="tool-bar">
             <button class="tool-item active" id="brush">🖌️</button>
             <button class="tool-item" id="comb">🪮</button>
         </div>
+        <button class="btn-clear" onclick="clearTray()">Clear Tray</button>
     </div>
     <div id="work-zone"><canvas id="tray"></canvas></div>
 </div>
@@ -45,7 +50,7 @@
 const canvas = document.getElementById('tray');
 const ctx = canvas.getContext('2d');
 let drops = [];
-let activeColor = "#111111";
+let activeColor = "#1A1A1A";
 let activeTool = "brush";
 
 function resize() {
@@ -56,49 +61,60 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-function addDrop(x, y, r, color) {
-    drops.forEach(drop => {
-        drop.vertices.forEach(v => {
-            let dx = v.x - x, dy = v.y - y;
-            let d2 = dx*dx + dy*dy;
-            let m = Math.sqrt(1 + (r*r)/d2);
-            v.x = x + dx * m;
-            v.y = y + dy * m;
-        });
-    });
+function clearTray() { drops = []; }
 
-    let vertices = [];
-    for(let i=0; i<150; i++) {
-        let angle = (i/150) * Math.PI * 2;
-        vertices.push({ x: x + Math.cos(angle)*r, y: y + Math.sin(angle)*r });
+// The Shutterstock Secret: Organic displacement and high-vertex blobs
+function addDrop(x, y, baseR, color) {
+    // Add multiple tiny sub-drops for that "splatter" look
+    const count = 1 + Math.floor(Math.random() * 3);
+    for(let j=0; j<count; j++) {
+        let r = baseR * (0.5 + Math.random());
+        let offsetX = (Math.random() - 0.5) * 10;
+        let offsetY = (Math.random() - 0.5) * 10;
+        
+        drops.forEach(drop => {
+            drop.vertices.forEach(v => {
+                let dx = v.x - (x + offsetX), dy = v.y - (y + offsetY);
+                let d2 = dx*dx + dy*dy;
+                let m = Math.sqrt(1 + (r*r)/d2);
+                v.x = (x + offsetX) + dx * m;
+                v.y = (y + offsetY) + dy * m;
+            });
+        });
+
+        let vertices = [];
+        const segments = 220;
+        for(let i=0; i<segments; i++) {
+            let angle = (i/segments) * Math.PI * 2;
+            // Add subtle noise to the circle radius for organic edges
+            let noise = 1 + (Math.sin(i * 0.1) * 0.02);
+            vertices.push({ x: (x + offsetX) + Math.cos(angle)*r*noise, y: (y + offsetY) + Math.sin(angle)*r*noise });
+        }
+        drops.push({ color, vertices });
     }
-    drops.push({ color, vertices });
 }
 
 function resample(drop) {
-    const threshold = 8; 
-    const limit = 2000; // Cap points to prevent "White Screen" crash
+    const threshold = 7;
+    const limit = 1800;
     if (drop.vertices.length > limit) return;
-
-    const newVertices = [];
+    const newV = [];
     for (let i = 0; i < drop.vertices.length; i++) {
-        let v1 = drop.vertices[i];
-        let v2 = drop.vertices[(i + 1) % drop.vertices.length];
-        newVertices.push(v1);
-        let dist = Math.hypot(v1.x - v2.x, v1.y - v2.y);
-        if (dist > threshold) {
-            newVertices.push({ x: (v1.x + v2.x)/2, y: (v1.y + v2.y)/2 });
+        let v1 = drop.vertices[i], v2 = drop.vertices[(i + 1) % drop.vertices.length];
+        newV.push(v1);
+        if (Math.hypot(v1.x - v2.x, v1.y - v2.y) > threshold) {
+            newV.push({ x: (v1.x + v2.x)/2, y: (v1.y + v2.y)/2 });
         }
     }
-    drop.vertices = newVertices;
+    drop.vertices = newV;
 }
 
 function autoSweep(edge) {
     const traySize = canvas.width;
-    const steps = 40;
-    const numTines = 20;
+    const steps = 45;
+    const numTines = 26;
     const spacing = traySize / (numTines + 1);
-    const radius = 14;
+    const radius = 12;
     let step = 0;
 
     function animate() {
@@ -120,12 +136,11 @@ function autoSweep(edge) {
                 }
                 if (dist < radius) {
                     let force = Math.pow(1 - dist / radius, 2);
-                    v.x += dx * force;
-                    v.y += dy * force;
+                    v.x += dx * force; v.y += dy * force;
                     moved = true;
                 }
             });
-            if (moved && step % 2 === 0) resample(drop); // Resample every other frame to save CPU
+            if (moved && step % 2 === 0) resample(drop);
         });
         step++;
         requestAnimationFrame(animate);
@@ -134,23 +149,23 @@ function autoSweep(edge) {
 }
 
 function render() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "white";
+    ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     drops.forEach(drop => {
         ctx.beginPath();
         ctx.fillStyle = drop.color;
         const v = drop.vertices;
-        if (v.length < 3) return;
-        
         ctx.moveTo((v[0].x + v[v.length-1].x)/2, (v[0].y + v[v.length-1].y)/2);
         for (let i = 0; i < v.length; i++) {
-            let curr = v[i];
-            let next = v[(i + 1) % v.length];
+            let curr = v[i], next = v[(i + 1) % v.length];
             ctx.quadraticCurveTo(curr.x, curr.y, (curr.x + next.x)/2, (curr.y + next.y)/2);
         }
         ctx.fill();
+        // Faint stroke to simulate surface ink tension
+        ctx.strokeStyle = "rgba(0,0,0,0.05)";
+        ctx.lineWidth = 0.3;
+        ctx.stroke();
     });
     requestAnimationFrame(render);
 }
@@ -160,7 +175,7 @@ canvas.addEventListener('mousedown', (e) => {
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left, y = e.clientY - rect.top;
     const m = 60;
-    if (activeTool === "brush") addDrop(x, y, 30, activeColor);
+    if (activeTool === "brush") addDrop(x, y, 35, activeColor);
     else {
         if (x < m) autoSweep('left');
         else if (x > canvas.width - m) autoSweep('right');
