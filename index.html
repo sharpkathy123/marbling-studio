@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Fluid Marbling Studio</title>
+    <title>Suminagashi Precision Rake</title>
     <style>
         :root { --red-zone: #FF4D4D; --blue-zone: #4D79FF; }
         body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; font-family: sans-serif; background: #222; }
@@ -31,6 +31,8 @@
         .tool-bar { display: flex; gap: 15px; }
         .tool-item { background: white; border: none; padding: 15px; border-radius: 12px; cursor: pointer; font-size: 1.5rem; }
         .tool-item.active { background: #333; color: white; }
+        
+        .hint { color: white; font-size: 0.8rem; margin-top: 10px; opacity: 0.8; text-align: center; max-width: 80%; }
     </style>
 </head>
 <body>
@@ -49,6 +51,7 @@
             <button class="tool-item active" id="brush">🖌️</button>
             <button class="tool-item" id="comb">🪮</button>
         </div>
+        <div class="hint" id="hint-text">Select Brush to drop paint</div>
     </div>
     <div id="work-zone">
         <canvas id="tray"></canvas>
@@ -61,8 +64,6 @@ const ctx = canvas.getContext('2d', { alpha: false });
 let drops = [];
 let activeColor = "#111111";
 let activeTool = "brush";
-let isDragging = false;
-let lastX = 0, lastY = 0;
 
 function resize() {
     const size = canvas.clientWidth;
@@ -73,7 +74,6 @@ window.addEventListener('resize', resize);
 resize();
 
 function addDrop(x, y, r, color) {
-    // Math: Incompressible fluid displacement
     drops.forEach(drop => {
         drop.vertices.forEach(v => {
             let dx = v.x - x;
@@ -85,7 +85,6 @@ function addDrop(x, y, r, color) {
         });
     });
 
-    // High vertex density for "silk" effect
     let vertices = [];
     const segments = 300; 
     for(let i=0; i<segments; i++) {
@@ -95,15 +94,54 @@ function addDrop(x, y, r, color) {
     drops.push({ color, vertices });
 }
 
+// Automatic sweep logic
+function autoSweep(edge) {
+    const steps = 40;
+    const traySize = canvas.width;
+    const numTines = 24;
+    const spacing = traySize / (numTines + 1);
+    const tineRadius = 12;
+    
+    let currentStep = 0;
+
+    function animateSweep() {
+        if (currentStep >= steps) return;
+
+        let dx = 0, dy = 0;
+        let startX = 0, startY = 0;
+        let movePerStep = traySize / steps;
+
+        // Determine sweep direction
+        if (edge === 'left' || edge === 'right') {
+            dx = (edge === 'left') ? movePerStep : -movePerStep;
+            startX = (edge === 'left') ? (currentStep * movePerStep) : (traySize - (currentStep * movePerStep));
+            
+            for (let i = 0; i <= numTines; i++) {
+                applyTine(startX, i * spacing, dx, 0, tineRadius);
+            }
+        } else {
+            dy = (edge === 'top') ? movePerStep : -movePerStep;
+            startY = (edge === 'top') ? (currentStep * movePerStep) : (traySize - (currentStep * movePerStep));
+            
+            for (let i = 0; i <= numTines; i++) {
+                applyTine(i * spacing, startY, 0, dy, tineRadius);
+            }
+        }
+
+        currentStep++;
+        requestAnimationFrame(animateSweep);
+    }
+    animateSweep();
+}
+
 function applyTine(x, y, dx, dy, radius) {
     drops.forEach(drop => {
         drop.vertices.forEach(v => {
             let distSq = (x - v.x)**2 + (y - v.y)**2;
             if (distSq < radius * radius) {
-                // Smooth falloff for fluid motion
                 let force = Math.pow(1 - Math.sqrt(distSq) / radius, 1.5);
-                v.x += dx * force * 0.95;
-                v.y += dy * force * 0.95;
+                v.x += dx * force * 1.5;
+                v.y += dy * force * 1.5;
             }
         });
     });
@@ -113,76 +151,39 @@ function render() {
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    ctx.lineJoin = "round";
-    ctx.lineCap = "round";
-
     drops.forEach(drop => {
         ctx.beginPath();
         ctx.fillStyle = drop.color;
-        
         const v = drop.vertices;
         ctx.moveTo(v[0].x, v[0].y);
-        
-        // Use quadratic curves for organic fluidity
         for (let i = 0; i < v.length; i++) {
             let next = v[(i + 1) % v.length];
-            let midX = (v[i].x + next.x) / 2;
-            let midY = (v[i].y + next.y) / 2;
-            ctx.quadraticCurveTo(v[i].x, v[i].y, midX, midY);
+            ctx.quadraticCurveTo(v[i].x, v[i].y, (v[i].x + next.x)/2, (v[i].y + next.y)/2);
         }
-        
         ctx.fill();
-        // Subtle anti-aliasing stroke
-        ctx.strokeStyle = drop.color;
-        ctx.lineWidth = 0.5;
-        ctx.stroke();
     });
     requestAnimationFrame(render);
 }
 render();
 
-function handleStart(e) {
-    isDragging = true;
-    const pos = getPos(e);
-    lastX = pos.x; lastY = pos.y;
-    if (activeTool === "brush") addDrop(pos.x, pos.y, 35, activeColor);
-}
-
-function handleMove(e) {
-    if (!isDragging || activeTool !== "comb") return;
-    const pos = getPos(e);
-    let dx = pos.x - lastX;
-    let dy = pos.y - lastY;
-    
-    const traySize = canvas.width;
-    const numTines = 22; 
-    const spacing = traySize / (numTines + 1);
-    const tineRadius = 14; 
-
-    for (let i = -Math.floor(numTines/2); i <= Math.floor(numTines/2); i++) {
-        let angle = Math.atan2(dy, dx) + Math.PI/2;
-        let offsetX = Math.cos(angle) * (i * spacing);
-        let offsetY = Math.sin(angle) * (i * spacing);
-        applyTine(pos.x + offsetX, pos.y + offsetY, dx, dy, tineRadius);
-    }
-    
-    lastX = pos.x; lastY = pos.y;
-}
-
-function getPos(e) {
+canvas.addEventListener('mousedown', (e) => {
     const rect = canvas.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    return { x: clientX - rect.left, y: clientY - rect.top };
-}
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const pad = 60; // Detection zone for edges
 
-canvas.addEventListener('mousedown', handleStart);
-canvas.addEventListener('mousemove', handleMove);
-window.addEventListener('mouseup', () => isDragging = false);
-canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleStart(e); });
-canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handleMove(e); });
-window.addEventListener('touchend', () => isDrawing = false);
+    if (activeTool === "brush") {
+        addDrop(x, y, 35, activeColor);
+    } else {
+        // Edge detection for sweep
+        if (y < pad) autoSweep('top');
+        else if (y > canvas.height - pad) autoSweep('bottom');
+        else if (x < pad) autoSweep('left');
+        else if (x > canvas.width - pad) autoSweep('right');
+    }
+});
 
+// UI Logic
 document.querySelectorAll('.swatch').forEach(s => {
     s.onclick = () => {
         document.querySelector('.swatch.active').classList.remove('active');
@@ -190,8 +191,19 @@ document.querySelectorAll('.swatch').forEach(s => {
         activeColor = s.dataset.color;
     };
 });
-document.getElementById('brush').onclick = () => { activeTool="brush"; updateUI(); };
-document.getElementById('comb').onclick = () => { activeTool="comb"; updateUI(); };
+
+const hint = document.getElementById('hint-text');
+document.getElementById('brush').onclick = () => { 
+    activeTool="brush"; 
+    updateUI(); 
+    hint.innerText = "Tap tray to drop paint";
+};
+document.getElementById('comb').onclick = () => { 
+    activeTool="comb"; 
+    updateUI(); 
+    hint.innerText = "Tap tray edges to sweep rake (Top/Bottom/Left/Right)";
+};
+
 function updateUI() {
     document.getElementById('brush').className = activeTool === "brush" ? "tool-item active" : "tool-item";
     document.getElementById('comb').className = activeTool === "comb" ? "tool-item active" : "tool-item";
