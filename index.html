@@ -1,213 +1,42 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Suminagashi Precision Rake</title>
-    <style>
-        :root { --red-zone: #FF4D4D; --blue-zone: #4D79FF; }
-        body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; font-family: sans-serif; background: #222; }
-        #app-wrapper { display: flex; width: 100%; height: 100%; }
-        
-        @media (orientation: landscape) { 
-            #app-wrapper { flex-direction: row; }
-            #tool-dock { width: 50%; height: 100%; }
-            #work-zone { width: 50%; height: 100%; }
-        }
-        @media (orientation: portrait) {
-            #app-wrapper { flex-direction: column; }
-            #tool-dock { width: 100%; height: 50%; }
-            #work-zone { width: 100%; height: 50%; }
-        }
-
-        #tool-dock { background: var(--red-zone); display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 20px; }
-        #work-zone { background: var(--blue-zone); display: flex; justify-content: center; align-items: center; }
-        
-        canvas { background: white; width: min(90%, 90% * (height / width)); aspect-ratio: 1 / 1; border-radius: 4px; cursor: crosshair; touch-action: none; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
-        
-        .palette { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 15px; }
-        .swatch { width: 40px; height: 40px; border-radius: 50%; border: 3px solid white; cursor: pointer; transition: 0.2s; }
-        .swatch.active { transform: scale(1.2); border-color: #333; }
-        .tool-bar { display: flex; gap: 15px; }
-        .tool-item { background: white; border: none; padding: 15px; border-radius: 12px; cursor: pointer; font-size: 1.5rem; }
-        .tool-item.active { background: #333; color: white; }
-        
-        .hint { color: white; font-size: 0.8rem; margin-top: 10px; opacity: 0.8; text-align: center; max-width: 80%; }
-    </style>
-</head>
-<body>
-
-<div id="app-wrapper">
-    <div id="tool-dock">
-        <div class="palette">
-            <div class="swatch active" style="background: #111;" data-color="#111111"></div>
-            <div class="swatch" style="background: #FF3E00;" data-color="#FF3E00"></div>
-            <div class="swatch" style="background: #FFD700;" data-color="#FFD700"></div>
-            <div class="swatch" style="background: #00CF91;" data-color="#00CF91"></div>
-            <div class="swatch" style="background: #007BFF;" data-color="#007BFF"></div>
-            <div class="swatch" style="background: #7000FF;" data-color="#7000FF"></div>
-        </div>
-        <div class="tool-bar">
-            <button class="tool-item active" id="brush">🖌️</button>
-            <button class="tool-item" id="comb">🪮</button>
-        </div>
-        <div class="hint" id="hint-text">Select Brush to drop paint</div>
-    </div>
-    <div id="work-zone">
-        <canvas id="tray"></canvas>
-    </div>
-</div>
-
-<script>
-const canvas = document.getElementById('tray');
-const ctx = canvas.getContext('2d', { alpha: false });
-let drops = [];
-let activeColor = "#111111";
-let activeTool = "brush";
-
-function resize() {
-    const size = canvas.clientWidth;
-    canvas.width = size;
-    canvas.height = size;
-}
-window.addEventListener('resize', resize);
-resize();
-
-function addDrop(x, y, r, color) {
-    drops.forEach(drop => {
-        drop.vertices.forEach(v => {
-            let dx = v.x - x;
-            let dy = v.y - y;
-            let d2 = dx*dx + dy*dy;
-            let m = Math.sqrt(1 + (r*r)/d2);
-            v.x = x + dx * m;
-            v.y = y + dy * m;
-        });
-    });
-
-    let vertices = [];
-    const segments = 300; 
-    for(let i=0; i<segments; i++) {
-        let angle = (i/segments) * Math.PI * 2;
-        vertices.push({ x: x + Math.cos(angle)*r, y: y + Math.sin(angle)*r });
-    }
-    drops.push({ color, vertices });
-}
-
-// Automatic sweep logic
-function autoSweep(edge) {
-    const steps = 40;
-    const traySize = canvas.width;
-    const numTines = 24;
-    const spacing = traySize / (numTines + 1);
-    const tineRadius = 12;
+// Add this helper function to maintain fluidity during complex raking
+function resample(drop) {
+    const maxDist = 4; // Threshold to inject new detail
+    const newVertices = [];
     
-    let currentStep = 0;
-
-    function animateSweep() {
-        if (currentStep >= steps) return;
-
-        let dx = 0, dy = 0;
-        let startX = 0, startY = 0;
-        let movePerStep = traySize / steps;
-
-        // Determine sweep direction
-        if (edge === 'left' || edge === 'right') {
-            dx = (edge === 'left') ? movePerStep : -movePerStep;
-            startX = (edge === 'left') ? (currentStep * movePerStep) : (traySize - (currentStep * movePerStep));
-            
-            for (let i = 0; i <= numTines; i++) {
-                applyTine(startX, i * spacing, dx, 0, tineRadius);
-            }
-        } else {
-            dy = (edge === 'top') ? movePerStep : -movePerStep;
-            startY = (edge === 'top') ? (currentStep * movePerStep) : (traySize - (currentStep * movePerStep));
-            
-            for (let i = 0; i <= numTines; i++) {
-                applyTine(i * spacing, startY, 0, dy, tineRadius);
-            }
+    for (let i = 0; i < drop.vertices.length; i++) {
+        let v1 = drop.vertices[i];
+        let v2 = drop.vertices[(i + 1) % drop.vertices.length];
+        
+        newVertices.push(v1);
+        
+        // Calculate distance between points
+        let d = Math.sqrt((v1.x - v2.x)**2 + (v1.y - v2.y)**2);
+        
+        // If they are too far apart, add a midpoint
+        if (d > maxDist) {
+            newVertices.push({
+                x: (v1.x + v2.x) / 2,
+                y: (v1.y + v2.y) / 2
+            });
         }
-
-        currentStep++;
-        requestAnimationFrame(animateSweep);
     }
-    animateSweep();
+    drop.vertices = newVertices;
 }
 
+// Update the applyTine logic to trigger resampling
 function applyTine(x, y, dx, dy, radius) {
     drops.forEach(drop => {
+        let moved = false;
         drop.vertices.forEach(v => {
             let distSq = (x - v.x)**2 + (y - v.y)**2;
             if (distSq < radius * radius) {
                 let force = Math.pow(1 - Math.sqrt(distSq) / radius, 1.5);
                 v.x += dx * force * 1.5;
                 v.y += dy * force * 1.5;
+                moved = true;
             }
         });
+        // If the drop was touched by the rake, check if it needs more detail
+        if (moved) resample(drop);
     });
 }
-
-function render() {
-    ctx.fillStyle = "white";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    drops.forEach(drop => {
-        ctx.beginPath();
-        ctx.fillStyle = drop.color;
-        const v = drop.vertices;
-        ctx.moveTo(v[0].x, v[0].y);
-        for (let i = 0; i < v.length; i++) {
-            let next = v[(i + 1) % v.length];
-            ctx.quadraticCurveTo(v[i].x, v[i].y, (v[i].x + next.x)/2, (v[i].y + next.y)/2);
-        }
-        ctx.fill();
-    });
-    requestAnimationFrame(render);
-}
-render();
-
-canvas.addEventListener('mousedown', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const pad = 60; // Detection zone for edges
-
-    if (activeTool === "brush") {
-        addDrop(x, y, 35, activeColor);
-    } else {
-        // Edge detection for sweep
-        if (y < pad) autoSweep('top');
-        else if (y > canvas.height - pad) autoSweep('bottom');
-        else if (x < pad) autoSweep('left');
-        else if (x > canvas.width - pad) autoSweep('right');
-    }
-});
-
-// UI Logic
-document.querySelectorAll('.swatch').forEach(s => {
-    s.onclick = () => {
-        document.querySelector('.swatch.active').classList.remove('active');
-        s.classList.add('active');
-        activeColor = s.dataset.color;
-    };
-});
-
-const hint = document.getElementById('hint-text');
-document.getElementById('brush').onclick = () => { 
-    activeTool="brush"; 
-    updateUI(); 
-    hint.innerText = "Tap tray to drop paint";
-};
-document.getElementById('comb').onclick = () => { 
-    activeTool="comb"; 
-    updateUI(); 
-    hint.innerText = "Tap tray edges to sweep rake (Top/Bottom/Left/Right)";
-};
-
-function updateUI() {
-    document.getElementById('brush').className = activeTool === "brush" ? "tool-item active" : "tool-item";
-    document.getElementById('comb').className = activeTool === "comb" ? "tool-item active" : "tool-item";
-}
-</script>
-</body>
-</html>
