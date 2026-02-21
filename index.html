@@ -3,33 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Fluid Resampling Marbler</title>
+    <title>Suminagashi Pro Studio</title>
     <style>
         :root { --red-zone: #FF4D4D; --blue-zone: #4D79FF; }
         body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; font-family: sans-serif; background: #111; }
         #app-wrapper { display: flex; width: 100%; height: 100%; }
-        
-        @media (orientation: landscape) { 
-            #app-wrapper { flex-direction: row; }
-            #tool-dock { width: 50%; height: 100%; }
-            #work-zone { width: 50%; height: 100%; }
-        }
-        @media (orientation: portrait) {
-            #app-wrapper { flex-direction: column; }
-            #tool-dock { width: 100%; height: 50%; }
-            #work-zone { width: 100%; height: 50%; }
-        }
-
+        @media (orientation: landscape) { #app-wrapper { flex-direction: row; } #tool-dock { width: 50%; height: 100%; } #work-zone { width: 50%; height: 100%; } }
+        @media (orientation: portrait) { #app-wrapper { flex-direction: column; } #tool-dock { width: 100%; height: 50%; } #work-zone { width: 100%; height: 50%; } }
         #tool-dock { background: var(--red-zone); display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 20px; }
         #work-zone { background: var(--blue-zone); display: flex; justify-content: center; align-items: center; }
-        
-        canvas { background: white; width: min(90%, 90% * (height / width)); aspect-ratio: 1 / 1; border-radius: 4px; cursor: crosshair; touch-action: none; }
-        
+        canvas { background: white; width: min(90%, 90% * (height / width)); aspect-ratio: 1 / 1; border-radius: 4px; cursor: crosshair; touch-action: none; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         .palette { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 15px; }
-        .swatch { width: 40px; height: 40px; border-radius: 50%; border: 3px solid white; cursor: pointer; }
+        .swatch { width: 40px; height: 40px; border-radius: 50%; border: 3px solid white; cursor: pointer; transition: 0.2s; }
         .swatch.active { transform: scale(1.2); border-color: #333; }
         .tool-bar { display: flex; gap: 15px; }
-        .tool-item { background: white; border: none; padding: 15px; border-radius: 12px; cursor: pointer; font-size: 1.5rem; }
+        .tool-item { background: white; border: none; padding: 15px; border-radius: 12px; cursor: pointer; font-size: 1.5rem; transition: 0.2s; }
         .tool-item.active { background: #333; color: white; }
     </style>
 </head>
@@ -50,9 +38,7 @@
             <button class="tool-item" id="comb">🪮</button>
         </div>
     </div>
-    <div id="work-zone">
-        <canvas id="tray"></canvas>
-    </div>
+    <div id="work-zone"><canvas id="tray"></canvas></div>
 </div>
 
 <script>
@@ -71,7 +57,6 @@ window.addEventListener('resize', resize);
 resize();
 
 function addDrop(x, y, r, color) {
-    // Standard displacement math
     drops.forEach(drop => {
         drop.vertices.forEach(v => {
             let dx = v.x - x, dy = v.y - y;
@@ -83,25 +68,25 @@ function addDrop(x, y, r, color) {
     });
 
     let vertices = [];
-    for(let i=0; i<200; i++) {
-        let angle = (i/200) * Math.PI * 2;
+    for(let i=0; i<150; i++) {
+        let angle = (i/150) * Math.PI * 2;
         vertices.push({ x: x + Math.cos(angle)*r, y: y + Math.sin(angle)*r });
     }
     drops.push({ color, vertices });
 }
 
-// THE FIX: Dynamic Resampling
 function resample(drop) {
-    const threshold = 5; // Points must be closer than this
+    const threshold = 8; 
+    const limit = 2000; // Cap points to prevent "White Screen" crash
+    if (drop.vertices.length > limit) return;
+
     const newVertices = [];
     for (let i = 0; i < drop.vertices.length; i++) {
         let v1 = drop.vertices[i];
         let v2 = drop.vertices[(i + 1) % drop.vertices.length];
         newVertices.push(v1);
-        
         let dist = Math.hypot(v1.x - v2.x, v1.y - v2.y);
         if (dist > threshold) {
-            // Inject a midpoint to maintain fluid resolution
             newVertices.push({ x: (v1.x + v2.x)/2, y: (v1.y + v2.y)/2 });
         }
     }
@@ -110,10 +95,10 @@ function resample(drop) {
 
 function autoSweep(edge) {
     const traySize = canvas.width;
-    const steps = 60;
-    const numTines = 28;
+    const steps = 40;
+    const numTines = 20;
     const spacing = traySize / (numTines + 1);
-    const radius = 10;
+    const radius = 14;
     let step = 0;
 
     function animate() {
@@ -125,16 +110,14 @@ function autoSweep(edge) {
             let moved = false;
             drop.vertices.forEach(v => {
                 let dist, dx = 0, dy = 0;
-                let speed = traySize / steps;
-                
+                let move = traySize / steps;
                 if (edge === 'left' || edge === 'right') {
                     dist = Math.abs(v.x - pos);
-                    dx = (edge === 'left' ? 1 : -1) * speed;
+                    dx = (edge === 'left' ? 1 : -1) * move;
                 } else {
                     dist = Math.abs(v.y - pos);
-                    dy = (edge === 'top' ? 1 : -1) * speed;
+                    dy = (edge === 'top' ? 1 : -1) * move;
                 }
-
                 if (dist < radius) {
                     let force = Math.pow(1 - dist / radius, 2);
                     v.x += dx * force;
@@ -142,8 +125,7 @@ function autoSweep(edge) {
                     moved = true;
                 }
             });
-            // If the rake touched this drop, subdivide any stretched edges
-            if (moved) resample(drop);
+            if (moved && step % 2 === 0) resample(drop); // Resample every other frame to save CPU
         });
         step++;
         requestAnimationFrame(animate);
@@ -152,19 +134,21 @@ function autoSweep(edge) {
 }
 
 function render() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
     drops.forEach(drop => {
         ctx.beginPath();
         ctx.fillStyle = drop.color;
-        // Use Quadratic Curves for organic edges
-        for (let i = 0; i < drop.vertices.length; i++) {
-            let v = drop.vertices[i];
-            let vNext = drop.vertices[(i + 1) % drop.vertices.length];
-            let midX = (v.x + vNext.x) / 2;
-            let midY = (v.y + vNext.y) / 2;
-            if (i === 0) ctx.moveTo(midX, midY);
-            ctx.quadraticCurveTo(v.x, v.y, midX, midY);
+        const v = drop.vertices;
+        if (v.length < 3) return;
+        
+        ctx.moveTo((v[0].x + v[v.length-1].x)/2, (v[0].y + v[v.length-1].y)/2);
+        for (let i = 0; i < v.length; i++) {
+            let curr = v[i];
+            let next = v[(i + 1) % v.length];
+            ctx.quadraticCurveTo(curr.x, curr.y, (curr.x + next.x)/2, (curr.y + next.y)/2);
         }
         ctx.fill();
     });
@@ -175,13 +159,13 @@ render();
 canvas.addEventListener('mousedown', (e) => {
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left, y = e.clientY - rect.top;
-    const margin = 50;
+    const m = 60;
     if (activeTool === "brush") addDrop(x, y, 30, activeColor);
     else {
-        if (x < margin) autoSweep('left');
-        else if (x > canvas.width - margin) autoSweep('right');
-        else if (y < margin) autoSweep('top');
-        else if (y > canvas.height - margin) autoSweep('bottom');
+        if (x < m) autoSweep('left');
+        else if (x > canvas.width - m) autoSweep('right');
+        else if (y < m) autoSweep('top');
+        else if (y > canvas.height - m) autoSweep('bottom');
     }
 });
 
