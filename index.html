@@ -2,40 +2,138 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dynamic Split App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Marbling Split Studio</title>
     <style>
+        :root {
+            --red-zone: #FF4D4D;
+            --blue-zone: #4D79FF;
+            --tray-color: #ffffff;
+        }
+
         body, html {
             margin: 0;
             padding: 0;
             width: 100vw;
             height: 100vh;
             overflow: hidden;
+            font-family: sans-serif;
         }
 
-        .split-screen {
+        #app-wrapper {
+            display: flex;
             width: 100%;
             height: 100%;
         }
 
-        /* LANDSCAPE: Width is the longest dimension. Split it vertically. */
+        /* Responsive Layout Logic */
         @media (orientation: landscape) {
-            .split-screen {
-                background: linear-gradient(to right, #FF0000 50%, #0000FF 50%);
-            }
+            #app-wrapper { flex-direction: row; }
+            #tool-dock { width: 50%; height: 100%; }
+            #work-zone { width: 50%; height: 100%; }
         }
 
-        /* PORTRAIT: Height is the longest dimension. Split it horizontally. */
         @media (orientation: portrait) {
-            .split-screen {
-                background: linear-gradient(to bottom, #FF0000 50%, #0000FF 50%);
-            }
+            #app-wrapper { flex-direction: column; }
+            #tool-dock { width: 100%; height: 50%; }
+            #work-zone { width: 100%; height: 50%; }
         }
+
+        /* RED SIDE: THE DOCK */
+        #tool-dock {
+            background-color: var(--red-zone);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            color: white;
+        }
+
+        /* BLUE SIDE: THE TRAY AREA */
+        #work-zone {
+            background-color: var(--blue-zone);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* THE WATER TRAY (SQUARE) */
+        #water-tray {
+            background: var(--tray-color);
+            /* Fits perfectly inside the 50% split */
+            width: min(80%, 80% * (height / width)); 
+            height: auto;
+            aspect-ratio: 1 / 1;
+            max-width: 90%;
+            max-height: 90%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            border-radius: 4px;
+        }
+
+        /* UI ELEMENTS */
+        .palette {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            background: rgba(255,255,255,0.2);
+            padding: 15px;
+            border-radius: 15px;
+        }
+
+        .swatch {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 3px solid white;
+            cursor: pointer;
+        }
+
+        .tool-bar {
+            display: flex;
+            gap: 15px;
+        }
+
+        .tool-item {
+            background: white;
+            border: none;
+            padding: 15px;
+            font-size: 1.5rem;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #cc0000;
+        }
+
+        .tool-item:active {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+
     </style>
 </head>
 <body>
 
-    <div class="split-screen"></div>
+<div id="app-wrapper">
+    <div id="tool-dock">
+        <div class="palette">
+            <div class="swatch" style="background: #000;"></div>
+            <div class="swatch" style="background: #fff;"></div>
+            <div class="swatch" style="background: #FFD700;"></div>
+            <div class="swatch" style="background: #FF69B4;"></div>
+            <div class="swatch" style="background: #00FF7F;"></div>
+            <div class="swatch" style="background: #4B0082;"></div>
+        </div>
+        <div class="tool-bar">
+            <button class="tool-item" title="Paintbrush">🖌️</button>
+            <button class="tool-item" title="Comb">🪮</button>
+        </div>
+        <p><strong>TOOL DOCK</strong></p>
+    </div>
+
+    <div id="work-zone">
+        <canvas id="water-tray"></canvas>
+    </div>
+</div>
 
 </body>
 </html>
