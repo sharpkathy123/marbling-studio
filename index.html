@@ -6,163 +6,172 @@
     <title>Square Water Tray</title>
     <style>
         :root {
-            --sidebar-width: 120px;
-            --tray-bg: #eef2f3;
-            --water-color: #ffffff;
+            --bg-color: #e0e0e0;
+            --sidebar-bg: #ffffff;
+            --tray-border: #999;
         }
 
-        /* Prevent all scrolling */
-        * { box-sizing: border-box; }
+        /* Lock the viewport to prevent scrolling */
         body, html {
             margin: 0;
             padding: 0;
             width: 100vw;
             height: 100vh;
-            overflow: hidden; 
-            display: flex;
-            background-color: var(--tray-bg);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            font-family: system-ui, -apple-system, sans-serif;
         }
 
-        #app-wrapper {
+        /* Layout Container */
+        #app-container {
             display: flex;
-            width: 100%;
-            height: 100%;
+            flex-direction: row;
+            width: 100vw;
+            height: 100vh;
         }
 
-        /* Tray Section: Centers the square */
-        #tray-area {
+        /* 1. THE WATER TRAY (SQUARE) */
+        #canvas-section {
             flex: 1;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 15px;
-            height: 100%;
+            padding: 20px;
         }
 
-        /* The Square Tray logic */
         #water-tray {
-            background: var(--water-color);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-            border: 4px solid #fff;
-            /* Scale to the smaller of the two dimensions */
-            width: min(90vh, calc(100vw - var(--sidebar-width) - 40px));
-            height: min(90vh, calc(100vw - var(--sidebar-width) - 40px));
+            background: white;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.1), 0 10px 30px rgba(0,0,0,0.15);
+            border: 8px solid white;
+            border-radius: 4px;
+            /* Ensures it is always a square based on the smaller screen dimension */
+            width: min(85vh, calc(100vw - 180px));
+            height: min(85vh, calc(100vw - 180px));
             aspect-ratio: 1 / 1;
             cursor: crosshair;
         }
 
-        /* Sidebar Tools */
-        #sidebar {
-            width: var(--sidebar-width);
-            height: 100%;
-            background: white;
-            border-left: 1px solid #ddd;
+        /* 2. THE TOOLBAR */
+        #toolbar {
+            width: 150px;
+            background: var(--sidebar-bg);
+            border-left: 1px solid #ccc;
             display: flex;
             flex-direction: column;
+            padding: 20px 10px;
+            gap: 2rem;
             align-items: center;
-            padding: 15px 5px;
-            justify-content: space-around; /* Distributes tools evenly */
+            box-shadow: -2px 0 10px rgba(0,0,0,0.05);
         }
 
-        .tool-label {
-            font-size: 0.75rem;
-            font-weight: bold;
+        .section-label {
+            font-size: 0.7rem;
+            font-weight: 800;
             text-transform: uppercase;
-            margin-bottom: 8px;
-            color: #666;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            color: #555;
+            text-align: center;
         }
 
-        /* Palette Grid */
+        /* Color Palette */
         #palette {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
         }
 
-        .swatch {
-            width: 32px;
-            height: 32px;
+        .color-circle {
+            width: 35px;
+            height: 35px;
             border-radius: 50%;
             cursor: pointer;
-            border: 2px solid transparent;
+            border: 3px solid transparent;
             transition: transform 0.1s;
         }
-        .swatch:hover { transform: scale(1.1); }
-        .swatch.selected { border-color: #333; box-shadow: 0 0 5px rgba(0,0,0,0.2); }
+
+        .color-circle.selected {
+            border-color: #333;
+            transform: scale(1.1);
+        }
 
         /* Tool Buttons */
         .tool-btn {
-            width: 50px;
-            height: 50px;
+            width: 60px;
+            height: 60px;
+            background: #f0f0f0;
+            border: 2px solid #ddd;
+            border-radius: 12px;
             font-size: 1.5rem;
-            background: #f8f9fa;
-            border: 1px solid #eee;
-            border-radius: 10px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-        }
-        .tool-btn.active {
-            background: #e7f3ff;
-            border-color: #007bff;
+            transition: all 0.2s;
         }
 
+        .tool-btn.active {
+            background: #e3f2fd;
+            border-color: #2196f3;
+            box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
+        }
+
+        /* Responsive adjustment for small vertical screens */
+        @media (max-width: 500px) {
+            #app-container { flex-direction: column; }
+            #toolbar { width: 100%; height: auto; border-left: none; border-top: 1px solid #ccc; flex-direction: row; justify-content: space-around; }
+            #water-tray { width: 90vw; height: 90vw; }
+        }
     </style>
 </head>
 <body>
 
-<div id="app-wrapper">
-    <main id="tray-area">
+<div id="app-container">
+    <main id="canvas-section">
         <canvas id="water-tray"></canvas>
     </main>
 
-    <aside id="sidebar">
-        <div class="tool-section">
-            <div class="tool-label">Colors</div>
+    <aside id="toolbar">
+        <div class="group">
+            <div class="section-label">Palette</div>
             <div id="palette">
-                <div class="swatch selected" style="background: #E63946;"></div>
-                <div class="swatch" style="background: #F1FAEE;"></div>
-                <div class="swatch" style="background: #A8DADC;"></div>
-                <div class="swatch" style="background: #457B9D;"></div>
-                <div class="swatch" style="background: #1D3557;"></div>
-                <div class="swatch" style="background: #000000;"></div>
+                <div class="color-circle selected" style="background: #264653;"></div>
+                <div class="color-circle" style="background: #2a9d8f;"></div>
+                <div class="color-circle" style="background: #e9c46a;"></div>
+                <div class="color-circle" style="background: #f4a261;"></div>
+                <div class="color-circle" style="background: #e76f51;"></div>
+                <div class="color-circle" style="background: #000000;"></div>
             </div>
         </div>
 
-        <div class="tool-section">
-            <div class="tool-label">Brush</div>
-            <button class="tool-btn active" id="brush-btn">🖌️</button>
+        <div class="group">
+            <div class="section-label">Brush</div>
+            <button class="tool-btn active" id="brush" title="Paintbrush">🖌️</button>
         </div>
 
-        <div class="tool-section">
-            <div class="tool-label">Comb</div>
-            <button class="tool-btn" id="comb-btn">🪮</button>
+        <div class="group">
+            <div class="section-label">Comb</div>
+            <button class="tool-btn" id="comb" title="Comb">🪮</button>
         </div>
     </aside>
 </div>
 
 <script>
-    // Handle Tool Toggling
-    const brushBtn = document.getElementById('brush-btn');
-    const combBtn = document.getElementById('comb-btn');
-    const swatches = document.querySelectorAll('.swatch');
+    // Simple UI interaction logic
+    const colors = document.querySelectorAll('.color-circle');
+    const tools = document.querySelectorAll('.tool-btn');
 
-    brushBtn.addEventListener('click', () => {
-        brushBtn.classList.add('active');
-        combBtn.classList.remove('active');
+    colors.forEach(c => {
+        c.addEventListener('click', () => {
+            document.querySelector('.color-circle.selected').classList.remove('selected');
+            c.classList.add('selected');
+        });
     });
 
-    combBtn.addEventListener('click', () => {
-        combBtn.classList.add('active');
-        brushBtn.classList.remove('active');
-    });
-
-    swatches.forEach(swatch => {
-        swatch.addEventListener('click', () => {
-            document.querySelector('.swatch.selected').classList.remove('selected');
-            swatch.classList.add('selected');
+    tools.forEach(t => {
+        t.addEventListener('click', () => {
+            document.querySelector('.tool-btn.active').classList.remove('active');
+            t.classList.add('active');
         });
     });
 </script>
