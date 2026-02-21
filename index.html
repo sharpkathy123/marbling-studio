@@ -2,179 +2,29 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Square Water Tray</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Red Square App</title>
     <style>
-        :root {
-            --bg-color: #e0e0e0;
-            --sidebar-bg: #ffffff;
-            --tray-border: #999;
-        }
-
-        /* Lock the viewport to prevent scrolling */
+        /* Remove default browser padding and margins */
         body, html {
             margin: 0;
             padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden; /* Prevents accidental scrolling */
+        }
+
+        /* The Red Square */
+        .red-square {
             width: 100vw;
             height: 100vh;
-            overflow: hidden;
-            background-color: var(--bg-color);
-            font-family: system-ui, -apple-system, sans-serif;
-        }
-
-        /* Layout Container */
-        #app-container {
-            display: flex;
-            flex-direction: row;
-            width: 100vw;
-            height: 100vh;
-        }
-
-        /* 1. THE WATER TRAY (SQUARE) */
-        #canvas-section {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        #water-tray {
-            background: white;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.1), 0 10px 30px rgba(0,0,0,0.15);
-            border: 8px solid white;
-            border-radius: 4px;
-            /* Ensures it is always a square based on the smaller screen dimension */
-            width: min(85vh, calc(100vw - 180px));
-            height: min(85vh, calc(100vw - 180px));
-            aspect-ratio: 1 / 1;
-            cursor: crosshair;
-        }
-
-        /* 2. THE TOOLBAR */
-        #toolbar {
-            width: 150px;
-            background: var(--sidebar-bg);
-            border-left: 1px solid #ccc;
-            display: flex;
-            flex-direction: column;
-            padding: 20px 10px;
-            gap: 2rem;
-            align-items: center;
-            box-shadow: -2px 0 10px rgba(0,0,0,0.05);
-        }
-
-        .section-label {
-            font-size: 0.7rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 10px;
-            color: #555;
-            text-align: center;
-        }
-
-        /* Color Palette */
-        #palette {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-        }
-
-        .color-circle {
-            width: 35px;
-            height: 35px;
-            border-radius: 50%;
-            cursor: pointer;
-            border: 3px solid transparent;
-            transition: transform 0.1s;
-        }
-
-        .color-circle.selected {
-            border-color: #333;
-            transform: scale(1.1);
-        }
-
-        /* Tool Buttons */
-        .tool-btn {
-            width: 60px;
-            height: 60px;
-            background: #f0f0f0;
-            border: 2px solid #ddd;
-            border-radius: 12px;
-            font-size: 1.5rem;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-        }
-
-        .tool-btn.active {
-            background: #e3f2fd;
-            border-color: #2196f3;
-            box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
-        }
-
-        /* Responsive adjustment for small vertical screens */
-        @media (max-width: 500px) {
-            #app-container { flex-direction: column; }
-            #toolbar { width: 100%; height: auto; border-left: none; border-top: 1px solid #ccc; flex-direction: row; justify-content: space-around; }
-            #water-tray { width: 90vw; height: 90vw; }
+            background-color: #FF0000;
         }
     </style>
 </head>
 <body>
 
-<div id="app-container">
-    <main id="canvas-section">
-        <canvas id="water-tray"></canvas>
-    </main>
-
-    <aside id="toolbar">
-        <div class="group">
-            <div class="section-label">Palette</div>
-            <div id="palette">
-                <div class="color-circle selected" style="background: #264653;"></div>
-                <div class="color-circle" style="background: #2a9d8f;"></div>
-                <div class="color-circle" style="background: #e9c46a;"></div>
-                <div class="color-circle" style="background: #f4a261;"></div>
-                <div class="color-circle" style="background: #e76f51;"></div>
-                <div class="color-circle" style="background: #000000;"></div>
-            </div>
-        </div>
-
-        <div class="group">
-            <div class="section-label">Brush</div>
-            <button class="tool-btn active" id="brush" title="Paintbrush">🖌️</button>
-        </div>
-
-        <div class="group">
-            <div class="section-label">Comb</div>
-            <button class="tool-btn" id="comb" title="Comb">🪮</button>
-        </div>
-    </aside>
-</div>
-
-<script>
-    // Simple UI interaction logic
-    const colors = document.querySelectorAll('.color-circle');
-    const tools = document.querySelectorAll('.tool-btn');
-
-    colors.forEach(c => {
-        c.addEventListener('click', () => {
-            document.querySelector('.color-circle.selected').classList.remove('selected');
-            c.classList.add('selected');
-        });
-    });
-
-    tools.forEach(t => {
-        t.addEventListener('click', () => {
-            document.querySelector('.tool-btn.active').classList.remove('active');
-            t.classList.add('active');
-        });
-    });
-</script>
+    <div class="red-square"></div>
 
 </body>
 </html>
