@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Suminagashi Drag Studio</title>
+    <title>Suminagashi Rake Studio</title>
     <style>
         :root { --red-zone: #FF4D4D; --blue-zone: #4D79FF; }
         body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; font-family: sans-serif; }
@@ -29,7 +29,7 @@
         .swatch { width: 40px; height: 40px; border-radius: 50%; border: 3px solid white; cursor: pointer; }
         .swatch.active { transform: scale(1.2); border-color: #333; }
         .tool-bar { display: flex; gap: 15px; }
-        .tool-item { background: white; border: none; padding: 15px; border-radius: 12px; cursor: pointer; font-size: 1.5rem; }
+        .tool-item { background: white; border: none; padding: 15px; border-radius: 12px; cursor: pointer; font-size: 1.5rem; transition: 0.2s; }
         .tool-item.active { background: #333; color: white; }
     </style>
 </head>
@@ -61,9 +61,8 @@ const ctx = canvas.getContext('2d');
 let drops = [];
 let activeColor = "#111111";
 let activeTool = "brush";
-let isDrawing = false;
-let lastX = 0;
-let lastY = 0;
+let isDragging = false;
+let lastX = 0, lastY = 0;
 
 function resize() {
     const size = canvas.clientWidth;
@@ -84,26 +83,23 @@ function addDrop(x, y, r, color) {
             v.y = y + dy * m;
         });
     });
-
     let vertices = [];
-    for(let i=0; i<150; i++) {
-        let angle = (i/150) * Math.PI * 2;
+    for(let i=0; i<180; i++) {
+        let angle = (i/180) * Math.PI * 2;
         vertices.push({ x: x + Math.cos(angle)*r, y: y + Math.sin(angle)*r });
     }
     drops.push({ color, vertices });
 }
 
-// Fluid "Comb" Logic: Displace points in the direction of drag
-function combFluid(x, y, dx, dy) {
-    const radius = 40; // The reach of the comb
+// Skinny Tine Logic
+function applyTine(x, y, dx, dy, radius) {
     drops.forEach(drop => {
         drop.vertices.forEach(v => {
             let distSq = (x - v.x)**2 + (y - v.y)**2;
             if (distSq < radius * radius) {
-                // Shift the point based on drag direction and proximity
-                let force = 1 - Math.sqrt(distSq) / radius;
-                v.x += dx * force;
-                v.y += dy * force;
+                let force = Math.pow(1 - Math.sqrt(distSq) / radius, 2);
+                v.x += dx * force * 0.8;
+                v.y += dy * force * 0.8;
             }
         });
     });
@@ -125,31 +121,34 @@ function render() {
 }
 render();
 
-// INPUT HANDLING
 function handleStart(e) {
-    isDrawing = true;
+    isDragging = true;
     const pos = getPos(e);
-    lastX = pos.x;
-    lastY = pos.y;
-    if (activeTool === "brush") addDrop(pos.x, pos.y, 30, activeColor);
+    lastX = pos.x; lastY = pos.y;
+    if (activeTool === "brush") addDrop(pos.x, pos.y, 25, activeColor);
 }
 
 function handleMove(e) {
-    if (!isDrawing || activeTool !== "comb") return;
+    if (!isDragging || activeTool !== "comb") return;
     const pos = getPos(e);
     let dx = pos.x - lastX;
     let dy = pos.y - lastY;
     
-    // Create multiple "tines" for the comb
-    for (let i = -1; i <= 1; i++) {
-        // Offset tines perpendicular to drag direction
-        let offsetX = -dy * (i * 0.5); 
-        let offsetY = dx * (i * 0.5);
-        combFluid(pos.x + offsetX, pos.y + offsetY, dx, dy);
+    // Create 7 skinny tines in a row
+    const numTines = 7;
+    const spacing = 15; // Distance between tines
+    const tineRadius = 12; // Skinny radius for sharp lines
+
+    for (let i = -Math.floor(numTines/2); i <= Math.floor(numTines/2); i++) {
+        // Calculate perpendicular offset for the rake
+        let angle = Math.atan2(dy, dx) + Math.PI/2;
+        let offsetX = Math.cos(angle) * (i * spacing);
+        let offsetY = Math.sin(angle) * (i * spacing);
+        
+        applyTine(pos.x + offsetX, pos.y + offsetY, dx, dy, tineRadius);
     }
     
-    lastX = pos.x;
-    lastY = pos.y;
+    lastX = pos.x; lastY = pos.y;
 }
 
 function getPos(e) {
@@ -162,12 +161,10 @@ function getPos(e) {
 canvas.addEventListener('mousedown', handleStart);
 canvas.addEventListener('mousemove', handleMove);
 window.addEventListener('mouseup', () => isDrawing = false);
-
 canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleStart(e); });
 canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handleMove(e); });
 window.addEventListener('touchend', () => isDrawing = false);
 
-// UI Logic
 document.querySelectorAll('.swatch').forEach(s => {
     s.onclick = () => {
         document.querySelector('.swatch.active').classList.remove('active');
