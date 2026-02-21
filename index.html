@@ -1,31 +1,158 @@
-<script>
-// ... (previous setup code remains the same)
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Suminagashi Studio</title>
+    <style>
+        :root { --red-zone: #FF4D4D; --blue-zone: #4D79FF; }
+        body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; font-family: sans-serif; }
+        #app-wrapper { display: flex; width: 100%; height: 100%; }
+        
+        @media (orientation: landscape) { 
+            #app-wrapper { flex-direction: row; }
+            #tool-dock { width: 50%; height: 100%; }
+            #work-zone { width: 50%; height: 100%; }
+        }
+        @media (orientation: portrait) {
+            #app-wrapper { flex-direction: column; }
+            #tool-dock { width: 100%; height: 50%; }
+            #work-zone { width: 100%; height: 50%; }
+        }
 
-function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // We draw from the latest drop to the oldest 
-    // to simulate the "layering" on the water surface
-    for (let i = drops.length - 1; i >= 0; i--) {
-        const drop = drops[i];
-        ctx.beginPath();
-        ctx.fillStyle = drop.color;
+        #tool-dock { background: var(--red-zone); display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 20px; }
+        #work-zone { background: var(--blue-zone); display: flex; justify-content: center; align-items: center; }
         
-        drop.points.forEach((p, index) => {
-            if (index === 0) ctx.moveTo(p.x, p.y);
-            else ctx.lineTo(p.x, p.y);
+        canvas { background: white; width: min(85%, 85% * (height / width)); aspect-ratio: 1 / 1; border-radius: 8px; cursor: crosshair; touch-action: none; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        
+        .palette { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 15px; }
+        .swatch { width: 40px; height: 40px; border-radius: 50%; border: 3px solid white; cursor: pointer; }
+        .swatch.active { transform: scale(1.2); border-color: #333; }
+        .tool-bar { display: flex; gap: 15px; }
+        .tool-item { background: white; border: none; padding: 15px; border-radius: 12px; cursor: pointer; font-size: 1.5rem; transition: 0.2s; }
+        .tool-item.active { background: #333; color: white; transform: scale(1.1); }
+    </style>
+</head>
+<body>
+
+<div id="app-wrapper">
+    <div id="tool-dock">
+        <div class="palette">
+            <div class="swatch active" style="background: #111;" data-color="#111111"></div>
+            <div class="swatch" style="background: #E63946;" data-color="#E63946"></div>
+            <div class="swatch" style="background: #FFB703;" data-color="#FFB703"></div>
+            <div class="swatch" style="background: #8ECAE6;" data-color="#8ECAE6"></div>
+            <div class="swatch" style="background: #219EBC;" data-color="#219EBC"></div>
+            <div class="swatch" style="background: #023047;" data-color="#023047"></div>
+        </div>
+        <div class="tool-bar">
+            <button class="tool-item active" id="brush">🖌️</button>
+            <button class="tool-item" id="comb">🪮</button>
+        </div>
+    </div>
+    <div id="work-zone">
+        <canvas id="tray"></canvas>
+    </div>
+</div>
+
+<script>
+const canvas = document.getElementById('tray');
+const ctx = canvas.getContext('2d');
+let drops = [];
+let activeColor = "#111111";
+let activeTool = "brush";
+
+function resize() {
+    const size = canvas.clientWidth;
+    canvas.width = size;
+    canvas.height = size;
+}
+window.addEventListener('resize', resize);
+resize();
+
+function addDrop(x, y, r, color) {
+    // 1. Displace existing points (The Math)
+    drops.forEach(drop => {
+        drop.vertices.forEach(v => {
+            let dx = v.x - x;
+            let dy = v.y - y;
+            let d2 = dx*dx + dy*dy;
+            let m = Math.sqrt(1 + (r*r)/d2);
+            v.x = x + dx * m;
+            v.y = y + dy * m;
         });
-        
-        ctx.closePath();
-        ctx.fill();
-        
-        // Optional: Add a subtle stroke to define boundaries
-        ctx.strokeStyle = "rgba(0,0,0,0.1)";
-        ctx.lineWidth = 0.5;
-        ctx.stroke();
+    });
+
+    // 2. Add new drop points
+    let vertices = [];
+    for(let i=0; i<120; i++) {
+        let angle = (i/120) * Math.PI * 2;
+        vertices.push({ x: x + Math.cos(angle)*r, y: y + Math.sin(angle)*r });
     }
-    requestAnimationFrame(draw);
+    drops.push({ color, vertices });
 }
 
-// ... (rest of the logic remains the same)
+function comb(y, strength) {
+    drops.forEach(drop => {
+        drop.vertices.forEach(v => {
+            let d = Math.abs(v.y - y);
+            // Move points horizontally based on proximity to the comb tine
+            v.x += (strength / (d/20 + 1));
+        });
+    });
+}
+
+function render() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw drops from oldest to newest
+    drops.forEach(drop => {
+        ctx.beginPath();
+        ctx.fillStyle = drop.color;
+        drop.vertices.forEach((v, i) => {
+            if(i === 0) ctx.moveTo(v.x, v.y);
+            else ctx.lineTo(v.x, v.y);
+        });
+        ctx.closePath();
+        ctx.fill();
+        // Thin stroke to prevent color bleeding
+        ctx.strokeStyle = "rgba(0,0,0,0.05)";
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+    });
+    requestAnimationFrame(render);
+}
+render();
+
+// Interaction logic
+canvas.addEventListener('mousedown', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    if(activeTool === "brush") {
+        addDrop(x, y, 30, activeColor);
+    } else {
+        comb(y, 40);
+    }
+});
+
+// UI Event Listeners
+document.querySelectorAll('.swatch').forEach(s => {
+    s.onclick = () => {
+        document.querySelector('.swatch.active').classList.remove('active');
+        s.classList.add('active');
+        activeColor = s.dataset.color;
+    };
+});
+
+document.getElementById('brush').onclick = () => { activeTool="brush"; updateUI(); };
+document.getElementById('comb').onclick = () => { activeTool="comb"; updateUI(); };
+
+function updateUI() {
+    document.getElementById('brush').className = activeTool === "brush" ? "tool-item active" : "tool-item";
+    document.getElementById('comb').className = activeTool === "comb" ? "tool-item active" : "tool-item";
+}
 </script>
+</body>
+</html>
