@@ -3,37 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Suminagashi Pro Studio</title>
+    <title>Suminagashi Ultra-Compact</title>
     <style>
         :root { 
             --red-sidebar: #E63946; 
             --blue-workzone: #457B9D;
             --navy: #1D3557; 
-            --off-white: #F1FAEE;
         }
         
         body, html { 
             margin: 0; padding: 0; width: 100vw; height: 100vh; 
-            overflow: hidden; font-family: 'Inter', system-ui, sans-serif; 
+            overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
             background: #111; 
         }
 
         #app-wrapper { display: flex; width: 100%; height: 100%; }
 
-        /* Sidebar UI - The Red Half */
+        /* Sidebar UI - Limited & Compact */
         #tool-dock { 
             background: var(--red-sidebar); 
             display: flex; 
             flex-direction: column; 
-            width: 320px; 
-            padding: 40px 25px; 
-            gap: 35px; 
-            box-shadow: 10px 0 30px rgba(0,0,0,0.2);
+            width: 260px; 
+            padding: 20px 15px; 
+            gap: 15px; 
+            box-shadow: 5px 0 15px rgba(0,0,0,0.2);
             z-index: 10;
             box-sizing: border-box;
         }
 
-        /* Work Zone - The Blue Half */
         #work-zone { 
             flex-grow: 1; 
             display: flex; 
@@ -44,88 +42,94 @@
 
         @media (orientation: portrait) { 
             #app-wrapper { flex-direction: column; } 
-            #tool-dock { width: 100%; height: 40%; padding: 20px; } 
+            #tool-dock { width: 100%; height: 30%; padding: 10px; } 
         }
 
         canvas { 
             background: white; 
             width: min(92%, 92% * (height / width)); 
             aspect-ratio: 1 / 1; 
-            border-radius: 4px; 
-            box-shadow: 0 40px 100px rgba(0,0,0,0.4); 
+            border-radius: 2px; 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3); 
             touch-action: none; 
         }
 
         .section-label { 
-            font-size: 0.7rem; 
+            font-size: 0.6rem; 
             text-transform: uppercase; 
-            letter-spacing: 2.5px; 
-            color: rgba(255,255,255,0.7); 
-            margin-bottom: 12px;
+            letter-spacing: 1.5px; 
+            color: rgba(255,255,255,0.8); 
+            margin-bottom: 8px;
             font-weight: 800;
         }
 
-        .ui-group { display: flex; flex-direction: column; }
+        /* Two-Column Sub-grid within Sidebar */
+        .compact-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 15px;
+            align-items: start;
+        }
 
-        /* Palette Layout */
-        .palette { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        /* Palette: Mini swatches */
+        .palette { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
         .swatch { 
-            width: 100%; aspect-ratio: 1; border-radius: 50%; 
-            border: 3px solid rgba(255,255,255,0.3); cursor: pointer; transition: 0.2s; 
+            width: 28px; height: 28px; border-radius: 50%; 
+            border: 2px solid rgba(255,255,255,0.3); cursor: pointer; transition: 0.1s; 
         }
-        .swatch.active { border-color: white; transform: scale(1.15); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        .swatch.active { border-color: white; transform: scale(1.1); }
 
-        /* Tool Items */
-        .tool-bar { display: flex; gap: 12px; }
+        /* Tools: Mini buttons */
+        .tool-bar { display: flex; gap: 8px; }
         .tool-item { 
-            flex: 1; background: rgba(0,0,0,0.1); border: 2px solid rgba(255,255,255,0.2); 
-            padding: 15px; border-radius: 14px; cursor: pointer; font-size: 1.6rem; 
-            transition: 0.2s; color: white;
+            flex: 1; background: rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.2); 
+            padding: 10px 0; border-radius: 8px; cursor: pointer; font-size: 1.2rem; 
+            transition: 0.1s; color: white;
         }
-        .tool-item.active { background: white; color: var(--red-sidebar); border-color: white; transform: translateY(-2px); }
+        .tool-item.active { background: white; color: var(--red-sidebar); border-color: white; }
 
-        /* Action Buttons */
-        .action-column { display: flex; flex-direction: column; gap: 10px; }
+        /* Action Buttons: Full width but short */
+        .action-column { display: flex; flex-direction: column; gap: 6px; }
         .btn { 
-            background: var(--navy); color: white; border: none; padding: 14px; 
-            border-radius: 12px; cursor: pointer; font-weight: 700; 
-            font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px;
-            transition: 0.2s;
+            background: var(--navy); color: white; border: none; padding: 10px; 
+            border-radius: 6px; cursor: pointer; font-weight: 700; 
+            font-size: 0.7rem; text-transform: uppercase;
         }
-        .btn:hover { background: #24426d; transform: translateY(-1px); }
-        .btn-undo { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); }
+        .btn-secondary { background: rgba(255,255,255,0.2); }
     </style>
 </head>
 <body>
 
 <div id="app-wrapper">
     <div id="tool-dock">
-        <div class="ui-group">
-            <div class="section-label">Ink Palette</div>
-            <div class="palette">
-                <div class="swatch active" style="background: #1D3557;" data-color="#1D3557"></div>
-                <div class="swatch" style="background: #E63946;" data-color="#E63946"></div>
-                <div class="swatch" style="background: #FFB703;" data-color="#FFB703"></div>
-                <div class="swatch" style="background: #00AFB9;" data-color="#00AFB9"></div>
-                <div class="swatch" style="background: #F07167;" data-color="#F07167"></div>
-                <div class="swatch" style="background: #111111;" data-color="#111111"></div>
+        <div class="compact-grid">
+            <div class="ui-group">
+                <div class="section-label">Ink</div>
+                <div class="palette">
+                    <div class="swatch active" style="background: #1D3557;" data-color="#1D3557"></div>
+                    <div class="swatch" style="background: #E63946;" data-color="#E63946"></div>
+                    <div class="swatch" style="background: #FFB703;" data-color="#FFB703"></div>
+                    <div class="swatch" style="background: #00AFB9;" data-color="#00AFB9"></div>
+                    <div class="swatch" style="background: #F07167;" data-color="#F07167"></div>
+                    <div class="swatch" style="background: #111111;" data-color="#111111"></div>
+                </div>
+            </div>
+
+            <div class="ui-group">
+                <div class="section-label">Tools</div>
+                <div class="tool-bar">
+                    <button class="tool-item active" id="brush">🖌️</button>
+                    <button class="tool-item" id="comb">🪮</button>
+                </div>
             </div>
         </div>
 
         <div class="ui-group">
-            <div class="section-label">Tools</div>
-            <div class="tool-bar">
-                <button class="tool-item active" id="brush">🖌️</button>
-                <button class="tool-item" id="comb">🪮</button>
-            </div>
-        </div>
-
-        <div class="ui-group">
-            <div class="section-label">Canvas Control</div>
+            <div class="section-label">Actions</div>
             <div class="action-column">
-                <button class="btn" onclick="download()">Download PNG</button>
-                <button class="btn btn-undo" onclick="undo()">Undo Last Move</button>
-                <button class="btn btn-undo" onclick="clearTray()">Reset Tray</button>
+                <button class="btn" onclick="download()">Download Art</button>
+                <button class="btn btn-secondary" onclick="undo()">Undo</button>
+                <button class="btn btn-secondary" onclick="clearTray()">Reset</button>
             </div>
         </div>
     </div>
@@ -169,7 +173,7 @@ function clearTray() {
 
 function download() {
     const link = document.createElement('a');
-    link.download = 'marbling-export.png';
+    link.download = 'marbling.png';
     link.href = canvas.toDataURL('image/png');
     link.click();
 }
@@ -185,7 +189,7 @@ function addDrop(x, y, r, color) {
         });
     });
     let vts = [];
-    const segments = 200;
+    const segments = 180;
     for(let i=0; i<segments; i++) {
         let a = (i/segments) * Math.PI * 2;
         vts.push({ x: x + Math.cos(a)*r, y: y + Math.sin(a)*r });
@@ -226,10 +230,10 @@ function applyTine(tx, ty, dx, dy, radius) {
 function autoSweep(edge) {
     saveToHistory();
     const size = canvas.width;
-    const steps = 55; 
+    const steps = 50; 
     const numTines = 16; 
     const spacing = size / (numTines + 1);
-    const radius = 13; 
+    const radius = 12; 
     let step = 0;
 
     function animate() {
@@ -280,7 +284,7 @@ canvas.addEventListener('mousedown', (e) => {
     const x = e.clientX - rect.left, y = e.clientY - rect.top;
     const margin = 60;
     if (activeTool === "brush") {
-        addDrop(x, y, 35, activeColor);
+        addDrop(x, y, 32, activeColor);
     } else {
         if (x < margin) autoSweep('left');
         else if (x > canvas.width - margin) autoSweep('right');
